@@ -7,6 +7,7 @@ class WishlistItem {
     required this.name,
     required this.image,
     required this.price,
+    this.ownerId = HiveOwnerKeys.local,
     this.restockAlert = false,
     this.synced = false,
     required this.createdAt,
@@ -18,6 +19,7 @@ class WishlistItem {
   final String name;
   final String image;
   final double price;
+  final String ownerId;
   final bool restockAlert;
   final bool synced;
   final DateTime createdAt;
@@ -29,6 +31,7 @@ class WishlistItem {
     String? name,
     String? image,
     double? price,
+    String? ownerId,
     bool? restockAlert,
     bool? synced,
     DateTime? createdAt,
@@ -40,6 +43,7 @@ class WishlistItem {
       name: name ?? this.name,
       image: image ?? this.image,
       price: price ?? this.price,
+      ownerId: ownerId ?? this.ownerId,
       restockAlert: restockAlert ?? this.restockAlert,
       synced: synced ?? this.synced,
       createdAt: createdAt ?? this.createdAt,
@@ -56,6 +60,9 @@ class WishlistItem {
       price: (map['price'] is num)
           ? (map['price'] as num).toDouble()
           : double.tryParse(map['price']?.toString() ?? '') ?? 0,
+      ownerId: map['owner']?.toString().isNotEmpty == true
+          ? map['owner'].toString()
+          : HiveOwnerKeys.local,
       restockAlert: map['restock_alert'] == true,
       synced: true,
       createdAt:
@@ -67,7 +74,7 @@ class WishlistItem {
     );
   }
 
-  Map<String, dynamic> toMap({required String owner}) {
+  Map<String, dynamic> toMap({String? owner}) {
     return {
       'id': id,
       'product_id': productId,
@@ -75,7 +82,7 @@ class WishlistItem {
       'image': image,
       'price': price,
       'restock_alert': restockAlert,
-      'owner': owner,
+      'owner': owner ?? ownerId,
       'created_at': createdAt.toIso8601String(),
       'updated_at': DateTime.now().toIso8601String(),
     };
@@ -98,6 +105,7 @@ class WishlistItemAdapter extends TypeAdapter<WishlistItem> {
       synced: reader.readBool(),
       createdAt: DateTime.fromMillisecondsSinceEpoch(reader.readInt()),
       updatedAt: DateTime.fromMillisecondsSinceEpoch(reader.readInt()),
+      ownerId: _readOwner(reader),
     );
   }
 
@@ -112,6 +120,23 @@ class WishlistItemAdapter extends TypeAdapter<WishlistItem> {
       ..writeBool(obj.restockAlert)
       ..writeBool(obj.synced)
       ..writeInt(obj.createdAt.millisecondsSinceEpoch)
-      ..writeInt(obj.updatedAt.millisecondsSinceEpoch);
+      ..writeInt(obj.updatedAt.millisecondsSinceEpoch)
+      ..writeString(obj.ownerId);
   }
+
+  static String _readOwner(BinaryReader reader) {
+    try {
+      if (reader.availableBytes <= 0) {
+        return HiveOwnerKeys.local;
+      }
+      final value = reader.readString();
+      return value.isEmpty ? HiveOwnerKeys.local : value;
+    } catch (_) {
+      return HiveOwnerKeys.local;
+    }
+  }
+}
+
+class HiveOwnerKeys {
+  static const local = 'local';
 }

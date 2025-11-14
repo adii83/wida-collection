@@ -89,7 +89,9 @@ class ResponsiveProductGrid extends StatelessWidget {
                             onTap: () =>
                                 wishlistController.toggleWishlist(product),
                             child: CircleAvatar(
-                              backgroundColor: Colors.black.withOpacity(0.4),
+                              backgroundColor: Colors.black.withValues(
+                                alpha: 0.4,
+                              ),
                               child: Icon(
                                 isFavorite
                                     ? Icons.favorite

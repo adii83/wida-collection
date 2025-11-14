@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../controller/wishlist_controller.dart';
 import '../controller/auth_controller.dart';
 import '../models/product_model.dart';
+import 'auth_screen.dart';
 
 class WishlistScreen extends GetView<WishlistController> {
   const WishlistScreen({super.key});
@@ -31,10 +32,7 @@ class WishlistScreen extends GetView<WishlistController> {
                   )
                 : IconButton(
                     tooltip: 'Masuk untuk sinkronisasi',
-                    onPressed: () => Get.snackbar(
-                      'Butuh Login',
-                      'Masuk Supabase melalui menu Catatan Cloud untuk mengaktifkan sinkronisasi.',
-                    ),
+                    onPressed: () => Get.to(() => const AuthScreen()),
                     icon: const Icon(Icons.lock_outline),
                   ),
           ),
@@ -49,7 +47,7 @@ class WishlistScreen extends GetView<WishlistController> {
                 Icon(Icons.favorite_border, size: 64),
                 SizedBox(height: 12),
                 Text(
-                  'Belum ada produk favorit.\nSentuh ikon hati pada kartu produk untuk menambahkan.\nJika sudah login, daftar ini akan tersinkron otomatis ke Supabase.',
+                  'Belum ada produk favorit.\nSentuh ikon hati untuk menambahkan.\nLogin/Signup Supabase dulu supaya wishlist Anda tersimpan per akun dan tersinkron.',
                   textAlign: TextAlign.center,
                 ),
               ],

@@ -19,12 +19,8 @@ class CapsulePlannerController extends GetxController {
   void onInit() {
     super.onInit();
     plans.assignAll(_hiveService.readCapsulePlans());
-    final color = _preferencesService
-        .loadSeedColor(Colors.orange)
-        .value
-        .toRadixString(16)
-        .padLeft(8, '0')
-        .toUpperCase();
+    final argb = _preferencesService.loadSeedColor(Colors.orange).toARGB32();
+    final color = argb.toRadixString(16).padLeft(8, '0').toUpperCase();
     accentColorHex.value = color;
   }
 

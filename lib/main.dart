@@ -9,9 +9,8 @@ import 'controller/local_note_controller.dart';
 import 'controller/theme_controller.dart';
 import 'controller/wishlist_controller.dart';
 import 'controller/lookbook_controller.dart';
-import 'controller/order_controller.dart';
 import 'controller/capsule_planner_controller.dart';
-import 'screens/home_screen.dart';
+import 'screens/auth_gate.dart';
 import 'services/hive_service.dart';
 import 'services/preferences_service.dart';
 import 'services/supabase_service.dart';
@@ -51,7 +50,6 @@ Future<void> main() async {
     permanent: true,
   );
   Get.put(LookbookController(hiveService), permanent: true);
-  Get.put(OrderController(supabaseService, authController), permanent: true);
   Get.put(CapsulePlannerController(hiveService, preferences), permanent: true);
   Get.put(
     CloudNoteController(supabaseService, authController),
@@ -74,7 +72,7 @@ class WindaCollectionApp extends StatelessWidget {
         theme: AppTheme.light(themeController.seedColor.value),
         darkTheme: AppTheme.dark(themeController.seedColor.value),
         themeMode: themeController.themeMode.value,
-        home: const HomeScreen(),
+        home: const AuthGate(),
       ),
     );
   }

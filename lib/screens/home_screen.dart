@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controller/theme_controller.dart';
+import '../controller/auth_controller.dart';
 import '../widgets/animated_banner_implicit.dart';
 import '../widgets/animated_banner_explicit.dart';
 import '../widgets/responsive_product_grid.dart';
@@ -9,8 +10,8 @@ import 'dio_product_screen.dart';
 import 'theme_settings_screen.dart';
 import 'wishlist_screen.dart';
 import 'lookbook_screen.dart';
-import 'order_tracker_screen.dart';
 import 'capsule_planner_screen.dart';
+import 'auth_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -18,6 +19,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeController = Get.find<ThemeController>();
+    final authController = Get.find<AuthController>();
 
     return Scaffold(
       appBar: AppBar(
@@ -26,6 +28,26 @@ class HomeScreen extends StatelessWidget {
         elevation: 2,
         title: Image.asset('assets/images/logo.png', height: 40),
         actions: [
+          Obx(
+            () => IconButton(
+              tooltip: authController.isLoggedIn
+                  ? 'Keluar dari Supabase'
+                  : 'Masuk/Daftar Supabase',
+              icon: Icon(
+                authController.isLoggedIn ? Icons.logout : Icons.login,
+              ),
+              onPressed: authController.isLoggedIn
+                  ? () async {
+                      await authController.signOut();
+                      Get.snackbar(
+                        'Keluar',
+                        'Anda telah keluar dari akun Supabase.',
+                        snackPosition: SnackPosition.BOTTOM,
+                      );
+                    }
+                  : () => Get.to(() => const AuthScreen()),
+            ),
+          ),
           Obx(
             () => IconButton(
               tooltip: 'Pengaturan Tema',
@@ -123,12 +145,12 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   _ExperimentCard(
-                    icon: Icons.local_shipping_outlined,
-                    title: 'Pelacak Pesanan Cloud',
+                    icon: Icons.lock_open_outlined,
+                    title: 'Login & Wishlist Cloud',
                     description:
-                        'Pantau status order, pembayaran, dan nomor resi yang disimpan di Supabase, cocok untuk simulasi multi-device.',
-                    actionLabel: 'Lihat Pesanan',
-                    onTap: () => Get.to(() => const OrderTrackerScreen()),
+                        'Masuk atau daftar Supabase di awal aplikasi supaya setiap pengguna memiliki wishlist terpisah yang otomatis sinkron.',
+                    actionLabel: 'Kelola Akun',
+                    onTap: () => Get.to(() => const AuthScreen()),
                   ),
                   const SizedBox(height: 12),
                   _ExperimentCard(

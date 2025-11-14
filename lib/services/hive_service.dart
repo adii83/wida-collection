@@ -56,10 +56,21 @@ class HiveService extends GetxService {
     await _notesBox?.clear();
   }
 
-  List<WishlistItem> readWishlist() {
+  List<WishlistItem> readWishlist({String? owner}) {
     final values = _wishlistBox?.values.toList() ?? [];
-    values.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-    return values;
+    final normalized =
+        values
+            .map(
+              (item) => item.ownerId.isEmpty
+                  ? item.copyWith(ownerId: HiveOwnerKeys.local)
+                  : item,
+            )
+            .toList()
+          ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    if (owner == null) {
+      return normalized;
+    }
+    return normalized.where((item) => item.ownerId == owner).toList();
   }
 
   Future<void> saveWishlistItem(WishlistItem item) async {

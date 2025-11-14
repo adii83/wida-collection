@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/note_model.dart';
 import '../models/wishlist_item.dart';
-import '../models/order_model.dart';
 
 class SupabaseService extends GetxService {
   SupabaseClient? _client;
@@ -164,21 +163,5 @@ class SupabaseService extends GetxService {
         callback: onChange,
       )
       ..subscribe();
-  }
-
-  Future<List<OrderModel>> fetchOrders(String owner) async {
-    if (!isReady) return [];
-    final data = await _client!
-        .from('orders')
-        .select()
-        .eq('owner', owner)
-        .order('updated_at', ascending: false);
-    return (data as List<dynamic>)
-        .map(
-          (row) => OrderModel.fromMap(
-            Map<String, dynamic>.from(row as Map<dynamic, dynamic>),
-          ),
-        )
-        .toList();
   }
 }
