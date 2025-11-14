@@ -87,6 +87,10 @@ app.*.map.json
 *.lock
 *.log
 *.json~
+lib.zip
+lib_dump.md
+lib_dump.txt
+.env
 
 # --- Coverage / reports ---
 coverage/

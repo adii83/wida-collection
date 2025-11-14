@@ -1,8 +1,21 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../models/product_model.dart';
 
 class ProductServiceDio {
-  final Dio _dio = Dio();
+  final Dio _dio = Dio()
+    ..interceptors.add(
+      LogInterceptor(request: true, responseBody: false, error: true),
+    )
+    ..interceptors.add(
+      InterceptorsWrapper(
+        onError: (e, handler) {
+          // Logging terpusat
+          debugPrint('DIO onError: ${e.response?.statusCode} ${e.message}');
+          return handler.next(e);
+        },
+      ),
+    );
   final List<String> endpoints = [
     'https://dummyjson.com/products/category/mens-shirts',
     'https://dummyjson.com/products/category/womens-dresses',
@@ -21,15 +34,15 @@ class ProductServiceDio {
           final products = data.map((json) => Product.fromJson(json)).toList();
           allProducts.addAll(products);
         } else {
-          print('Dio Error: ${response.statusCode} at $url');
+          debugPrint('DIO error: ${response.statusCode} at $url');
         }
       }
 
       stopwatch.stop();
-      print('DIO Load Time: ${stopwatch.elapsedMilliseconds} ms');
+      debugPrint('DIO Load Time: ${stopwatch.elapsedMilliseconds} ms');
       return allProducts;
     } catch (e) {
-      print('DIO Exception: $e');
+      debugPrint('DIO Exception: $e');
       return [];
     }
   }

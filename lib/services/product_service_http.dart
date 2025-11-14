@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/product_model.dart';
 
@@ -22,15 +23,15 @@ class ProductServiceHttp {
           final products = data.map((json) => Product.fromJson(json)).toList();
           allProducts.addAll(products);
         } else {
-          print('HTTP error: ${response.statusCode} at $url');
+          debugPrint('HTTP error: ${response.statusCode} at $url');
         }
       }
 
       stopwatch.stop();
-      print('HTTP Load Time: ${stopwatch.elapsedMilliseconds} ms');
+      debugPrint('HTTP Load Time: ${stopwatch.elapsedMilliseconds} ms');
       return allProducts;
     } catch (e) {
-      print('HTTP Exception: $e');
+      debugPrint('HTTP Exception: $e');
       return [];
     }
   }

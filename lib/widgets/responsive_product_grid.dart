@@ -4,6 +4,7 @@ import '../controller/product_controller.dart';
 import '../data/dummy_products.dart';
 import '../models/product_model.dart';
 import '../screens/product_detail_screen.dart';
+import '../controller/wishlist_controller.dart';
 
 class ResponsiveProductGrid extends StatelessWidget {
   const ResponsiveProductGrid({
@@ -22,6 +23,10 @@ class ResponsiveProductGrid extends StatelessWidget {
               ? Get.find<ProductController>()
               : Get.put(ProductController()))
         : null;
+    final WishlistController? wishlistController =
+        Get.isRegistered<WishlistController>()
+        ? Get.find<WishlistController>()
+        : null;
     final screenWidth = MediaQuery.of(context).size.width;
     final crossAxisCount = screenWidth < 600 ? 2 : 4;
 
@@ -38,52 +43,81 @@ class ResponsiveProductGrid extends StatelessWidget {
         ),
         itemBuilder: (context, index) {
           final product = productsToShow[index];
-          final isAsset = product.image.startsWith('assets/');
 
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ProductDetailScreen(product: product),
-                ),
-              );
-            },
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Hero(
-                  tag: product.id,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: isAsset
-                        ? Image.asset(
-                            product.image,
-                            width: double.infinity,
-                            height: 140,
-                            fit: BoxFit.cover,
-                          )
-                        : Image.network(
-                            product.image,
-                            width: double.infinity,
-                            height: 140,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.broken_image, size: 80),
-                          ),
+          Widget card(bool isFavorite) {
+            final isAsset = product.image.startsWith('assets/');
+            return GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ProductDetailScreen(product: product),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  product.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Text('Rp ${product.price.toStringAsFixed(0)}'),
-              ],
-            ),
-          );
+                );
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Stack(
+                    children: [
+                      Hero(
+                        tag: product.id,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: isAsset
+                              ? Image.asset(
+                                  product.image,
+                                  width: double.infinity,
+                                  height: 140,
+                                  fit: BoxFit.cover,
+                                )
+                              : Image.network(
+                                  product.image,
+                                  width: double.infinity,
+                                  height: 140,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Icon(Icons.broken_image, size: 80),
+                                ),
+                        ),
+                      ),
+                      if (wishlistController != null)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: InkWell(
+                            onTap: () =>
+                                wishlistController.toggleWishlist(product),
+                            child: CircleAvatar(
+                              backgroundColor: Colors.black.withOpacity(0.4),
+                              child: Icon(
+                                isFavorite
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    product.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text('Rp ${product.price.toStringAsFixed(0)}'),
+                ],
+              ),
+            );
+          }
+
+          if (wishlistController == null) {
+            return card(false);
+          }
+          return Obx(() => card(wishlistController.isFavorite(product.id)));
         },
       );
     }
