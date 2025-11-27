@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
+import '../config/design_tokens.dart';
+import '../config/layout_values.dart';
 import '../controller/auth_controller.dart';
+import '../widgets/gradient_button.dart';
+import '../widgets/rounded_icon_button.dart';
+
+enum AuthMode { login, signup }
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  const AuthScreen({super.key, this.initialMode = AuthMode.login});
+
+  final AuthMode initialMode;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -13,14 +22,22 @@ class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoginMode = true;
+  final _nameController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  bool _rememberMe = false;
+
+  late AuthMode _mode = widget.initialMode;
 
   AuthController get _auth => Get.find<AuthController>();
+
+  bool get _isLogin => _mode == AuthMode.login;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _nameController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -36,158 +53,291 @@ class _AuthScreenState extends State<AuthScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
-    final success = _isLoginMode
+    if (!_isLogin && password != _confirmPasswordController.text.trim()) {
+      Get.snackbar('Cek Ulang', 'Konfirmasi password belum sama');
+      return;
+    }
+
+    final success = _isLogin
         ? await _auth.signIn(email, password)
         : await _auth.signUp(email, password);
 
     if (success && mounted) {
       Get.snackbar(
-        _isLoginMode ? 'Berhasil Masuk' : 'Berhasil Daftar',
+        _isLogin ? 'Selamat datang kembali!' : 'Akun berhasil dibuat',
         'Wishlist Anda kini terhubung ke Supabase.',
         snackPosition: SnackPosition.BOTTOM,
       );
     }
   }
 
+  void _switchMode(AuthMode mode) {
+    setState(() {
+      _mode = mode;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Login & Signup Supabase'),
-        automaticallyImplyLeading: Navigator.of(context).canPop(),
-      ),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Obx(() {
-              if (_auth.isLoggedIn) {
-                final user = _auth.currentUser.value;
-                return _AccountSummary(
-                  email: user?.email ?? '-',
-                  onSignOut: () async {
-                    final navigator = Navigator.of(context);
-                    await _auth.signOut();
-                    if (!mounted) return;
-                    if (navigator.canPop()) {
-                      navigator.pop();
-                    }
-                  },
-                );
-              }
+        child: Container(
+          decoration: const BoxDecoration(gradient: AppGradients.hero),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Obx(() {
+                if (_auth.isLoggedIn) {
+                  final user = _auth.currentUser.value;
+                  return _AccountSummary(
+                    email: user?.email ?? '-',
+                    onSignOut: () async {
+                      final navigator = Navigator.of(context);
+                      await _auth.signOut();
+                      if (!mounted) return;
+                      if (navigator.canPop()) {
+                        navigator.pop();
+                      }
+                    },
+                  );
+                }
 
-              return Card(
-                margin: const EdgeInsets.all(24),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _isLoginMode
-                              ? Icons.lock_open
-                              : Icons.person_add_alt_1,
-                          size: 48,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          _isLoginMode ? 'Masuk Akun' : 'Daftar Akun Baru',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Supabase auth akan menyimpan wishlist tiap pengguna secara terpisah.',
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _emailController,
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon: Icon(Icons.email_outlined),
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.page,
+                    AppSpacing.heroTop,
+                    AppSpacing.page,
+                    48,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          RoundedIconButton(
+                            icon: Icons.arrow_back,
+                            onPressed: () {
+                              if (Navigator.of(context).canPop()) {
+                                Navigator.of(context).pop();
+                              }
+                            },
                           ),
-                          keyboardType: TextInputType.emailAddress,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Email wajib diisi';
-                            }
-                            if (!value.contains('@')) {
-                              return 'Format email tidak valid';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _passwordController,
-                          decoration: const InputDecoration(
-                            labelText: 'Password',
-                            prefixIcon: Icon(Icons.lock_outline),
-                          ),
-                          obscureText: true,
-                          validator: (value) {
-                            if (value == null || value.length < 6) {
-                              return 'Password minimal 6 karakter';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 20),
-                        Obx(
-                          () => SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: _auth.isLoading.value ? null : _submit,
-                              icon: _auth.isLoading.value
-                                  ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : Icon(
-                                      _isLoginMode
-                                          ? Icons.login
-                                          : Icons.app_registration,
-                                    ),
-                              label: Text(_isLoginMode ? 'Masuk' : 'Daftar'),
+                          TextButton(
+                            onPressed: () => _switchMode(
+                              _isLogin ? AuthMode.signup : AuthMode.login,
+                            ),
+                            child: Text(
+                              _isLogin
+                                  ? 'Daftar sekarang'
+                                  : 'Sudah punya akun?',
                             ),
                           ),
+                        ],
+                      ),
+                      AppSpacing.vHero,
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Icon(
+                              Icons.favorite,
+                              color: AppColors.primaryPink,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Wida Collection',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      AppSpacing.vSection,
+                      Text(
+                        _isLogin ? 'Welcome Back!' : 'Create Account',
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      Text(
+                        _isLogin
+                            ? 'Login untuk melanjutkan belanja'
+                            : 'Daftar untuk mulai berbelanja',
+                        style: const TextStyle(color: AppColors.softGray),
+                      ),
+                      AppSpacing.vSection,
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(32),
+                          boxShadow: AppShadows.card,
                         ),
-                        const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _isLoginMode = !_isLoginMode;
-                            });
-                          },
-                          child: Text(
-                            _isLoginMode
-                                ? 'Belum punya akun? Daftar di sini'
-                                : 'Sudah punya akun? Masuk di sini',
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            children: [
+                              if (!_isLogin) ...[
+                                TextFormField(
+                                  controller: _nameController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Nama Lengkap',
+                                  ),
+                                  validator: (value) {
+                                    if (!_isLogin &&
+                                        (value == null || value.isEmpty)) {
+                                      return 'Nama wajib diisi';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                AppSpacing.vItem,
+                              ],
+                              TextFormField(
+                                controller: _emailController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Email',
+                                ),
+                                keyboardType: TextInputType.emailAddress,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Email wajib diisi';
+                                  }
+                                  if (!value.contains('@')) {
+                                    return 'Format email tidak valid';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              AppSpacing.vItem,
+                              TextFormField(
+                                controller: _passwordController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Password',
+                                ),
+                                obscureText: true,
+                                validator: (value) {
+                                  if (value == null || value.length < 6) {
+                                    return 'Password minimal 6 karakter';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              if (!_isLogin) ...[
+                                AppSpacing.vItem,
+                                TextFormField(
+                                  controller: _confirmPasswordController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Konfirmasi Password',
+                                  ),
+                                  obscureText: true,
+                                  validator: (value) {
+                                    if (!_isLogin &&
+                                        (value == null || value.isEmpty)) {
+                                      return 'Konfirmasi password wajib diisi';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ],
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Checkbox(
+                                    value: _rememberMe,
+                                    onChanged: (value) => setState(
+                                      () => _rememberMe = value ?? false,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      _isLogin
+                                          ? 'Remember me'
+                                          : 'Saya setuju dengan Terms & Privacy',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  if (_isLogin)
+                                    TextButton(
+                                      onPressed: () => Get.snackbar(
+                                        'Info',
+                                        'Hubungi admin untuk reset password',
+                                      ),
+                                      child: const Text('Lupa password?'),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Obx(
+                                () => GradientButton(
+                                  label: _isLogin ? 'Login' : 'Daftar',
+                                  onPressed: _auth.isLoading.value
+                                      ? null
+                                      : _submit,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: const [
+                                  Expanded(child: Divider()),
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                    child: Text('atau login dengan'),
+                                  ),
+                                  Expanded(child: Divider()),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () {},
+                                      icon: const Icon(
+                                        Icons.g_mobiledata,
+                                        size: 28,
+                                      ),
+                                      label: const Text('Google'),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () {},
+                                      icon: const Icon(Icons.facebook_rounded),
+                                      label: const Text('Facebook'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              AppSpacing.vItem,
+                              Obx(
+                                () => _auth.lastError.value == null
+                                    ? const SizedBox.shrink()
+                                    : Text(
+                                        _auth.lastError.value!,
+                                        style: const TextStyle(
+                                          color: Colors.redAccent,
+                                        ),
+                                      ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Obx(
-                          () => _auth.lastError.value == null
-                              ? const SizedBox.shrink()
-                              : Text(
-                                  _auth.lastError.value!,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
-                                  ),
-                                ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ),
-              );
-            }),
+                );
+              }),
+            ),
           ),
         ),
       ),
@@ -203,34 +353,34 @@ class _AccountSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.all(24),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.verified_user, size: 48),
-            const SizedBox(height: 12),
-            Text('Sudah Masuk', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 4),
-            Text(email, style: Theme.of(context).textTheme.bodyLarge),
-            const SizedBox(height: 12),
-            const Text(
-              'Wishlist Anda otomatis tampil sesuai akun ini di semua perangkat.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: onSignOut,
-                icon: const Icon(Icons.logout),
-                label: const Text('Keluar'),
-              ),
-            ),
-          ],
-        ),
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: AppShadows.card,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.verified_user,
+            size: 48,
+            color: AppColors.primaryPink,
+          ),
+          AppSpacing.vItem,
+          Text('Sudah Masuk', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 4),
+          Text(email, style: Theme.of(context).textTheme.bodyLarge),
+          AppSpacing.vItem,
+          const Text(
+            'Wishlist Anda otomatis tampil sesuai akun ini di semua perangkat.',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          GradientButton(label: 'Keluar', onPressed: onSignOut),
+        ],
       ),
     );
   }

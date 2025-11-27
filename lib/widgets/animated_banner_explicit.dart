@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../config/layout_values.dart';
+
 class AnimatedBannerExplicit extends StatefulWidget {
-  const AnimatedBannerExplicit({super.key});
+  const AnimatedBannerExplicit({
+    super.key,
+    this.margin = AppSpacing.pagePadding,
+  });
+
+  final EdgeInsetsGeometry margin;
 
   @override
   State<AnimatedBannerExplicit> createState() => _AnimatedBannerExplicitState();
@@ -48,7 +55,7 @@ class _AnimatedBannerExplicitState extends State<AnimatedBannerExplicit>
         builder: (context, child) => Container(
           width: double.infinity,
           height: _heightAnimation.value,
-          margin: const EdgeInsets.symmetric(horizontal: 16),
+          margin: widget.margin,
           decoration: BoxDecoration(
             color: Colors.pink.shade200,
             borderRadius: BorderRadius.circular(16),

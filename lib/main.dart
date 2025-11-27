@@ -5,11 +5,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'config/app_theme.dart';
 import 'controller/auth_controller.dart';
 import 'controller/cloud_note_controller.dart';
-import 'controller/local_note_controller.dart';
 import 'controller/theme_controller.dart';
 import 'controller/wishlist_controller.dart';
-import 'controller/lookbook_controller.dart';
-import 'controller/capsule_planner_controller.dart';
 import 'screens/auth_gate.dart';
 import 'services/hive_service.dart';
 import 'services/preferences_service.dart';
@@ -40,7 +37,6 @@ Future<void> main() async {
   );
 
   Get.put(ThemeController(preferences), permanent: true);
-  Get.put(LocalNoteController(hiveService), permanent: true);
   final authController = Get.put(
     AuthController(supabaseService),
     permanent: true,
@@ -49,8 +45,6 @@ Future<void> main() async {
     WishlistController(hiveService, supabaseService, authController),
     permanent: true,
   );
-  Get.put(LookbookController(hiveService), permanent: true);
-  Get.put(CapsulePlannerController(hiveService, preferences), permanent: true);
   Get.put(
     CloudNoteController(supabaseService, authController),
     permanent: true,

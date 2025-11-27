@@ -10,14 +10,13 @@ dependencies:
   flutter:
     sdk: flutter
   get: ^4.6.6
-  http: ^1.2.0
-  dio: ^5.4.3
   shared_preferences: ^2.3.2
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   supabase_flutter: ^2.6.0
   uuid: ^4.4.2
   flutter_dotenv: ^5.1.0
+  google_fonts: ^6.2.1
 
 
 dev_dependencies:
