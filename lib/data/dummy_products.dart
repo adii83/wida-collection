@@ -1,5 +1,5 @@
 import '../models/product_model.dart';
-
+//dummy data
 final List<Product> dummyProducts = [
   Product(
     id: 'p1',
