@@ -9,7 +9,7 @@ import 'auth_controller.dart';
 
 class CartController extends GetxController {
   CartController(this._hiveService, this._supabaseService, this._auth);
-
+  //oke
   final HiveService _hiveService;
   final SupabaseService _supabaseService;
   final AuthController _auth;
