@@ -473,20 +473,6 @@ class GpsLocationView extends StatelessWidget {
             ),
 
             // ============================
-            // LAYER 2: Polyline / History Tracking
-            // ============================
-            if (controller.history.isNotEmpty)
-              PolylineLayer(
-                polylines: [
-                  Polyline(
-                    points: controller.history.toList(),
-                    strokeWidth: 4,
-                    color: Colors.green,
-                  ),
-                ],
-              ),
-
-            // ============================
             // LAYER 3: Marker Lokasi Saat Ini
             // ============================
             if (controller.currentPosition != null)
