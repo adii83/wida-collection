@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../controller/wishlist_controller.dart';
-import '../controller/auth_controller.dart';
+import '../controllers/wishlist_controller.dart';
+import '../controllers/auth_controller.dart';
 import '../models/product_model.dart';
 import 'auth_screen.dart';
 

@@ -63,3 +63,60 @@ Tambahkan tangkapan layar berikut ke folder `assets/images/report/`:
 4. `multi-device.png` – bukti dua perangkat dengan data yang sama.
 
 Setiap gambar akan dirujuk dalam laporan akhir atau slide presentasi.
+
+---
+
+# Eksperimen Geolocator + Flutter Map (GPS vs Network)
+
+Bagian ini mendokumentasikan eksperimen perbandingan antara dua penyedia lokasi: GPS (high accuracy) dan Network Provider (low accuracy) menggunakan paket `geolocator` dan peta `flutter_map` + OpenStreetMap.
+
+## Cara Menjalankan
+
+- Buka layar `Location Experiment Hub` di aplikasi: `LocationHubScreen`.
+- Gunakan tombol berikut:
+   - `Start GPS` / `Stop GPS` untuk menyalakan/mematikan tracking GPS.
+   - `Start Net` / `Stop Net` untuk menyalakan/mematikan tracking Network.
+   - `Fetch GPS once` dan `Fetch Net once` untuk mengukur waktu respon (latency) pengambilan satu-kali.
+   - `Center` untuk memusatkan peta pada posisi terbaru.
+   - `Export CSV` untuk menyalin seluruh rekaman ke clipboard dalam format CSV.
+
+Peta akan menampilkan:
+- Marker hijau: posisi terakhir GPS
+- Marker biru: posisi terakhir Network
+- Polyline hijau: jejak pergerakan GPS
+- Polyline biru: jejak pergerakan Network
+
+## Metrik Yang Diukur
+
+- Akurasi rata-rata (meter): rata-rata nilai `accuracy` dari setiap pembacaan.
+- Waktu respon fetch-once (ms): rata-rata durasi dari klik `Fetch ... once` hingga data diterima (ditampilkan per-provider di kartu statistik).
+- Pola pergerakan: visual (pada peta) berupa bentuk lintasan (stabil vs melompat), konsistensi mengikuti jalur, serta besarnya deviasi antar provider pada rute yang sama.
+
+## Prosedur Eksperimen (Disarankan)
+
+1. Berjalan kaki mengelilingi area terbuka selama 3–5 menit sambil menyalakan `Start GPS` dan `Start Net` bersamaan.
+2. Setiap 30–60 detik tekan `Fetch GPS once` dan `Fetch Net once` untuk melog waktu respon pengambilan satu-kali (latency). Lanjutan tracking tetap berjalan.
+3. Setelah selesai, tekan `Export CSV` lalu simpan hasil clipboard ke file `.csv` untuk analisis lanjutan (opsional di spreadsheet).
+4. Ambil tangkapan layar peta yang menampilkan kedua polyline untuk analisis pola pergerakan.
+
+## Template Analisis Hasil
+
+- Akurasi rata-rata:
+   - GPS: … m (lebih kecil = lebih baik)
+   - Network: … m
+   - Perbedaan: … m
+- Waktu respon fetch-once (rata-rata):
+   - GPS: … ms
+   - Network: … ms (umumnya lebih cepat, namun kurang presisi)
+- Pola pergerakan (temuan visual):
+   - GPS: … (mis. mengikuti trotoar cukup presisi, jitter kecil)
+   - Network: … (mis. melompat antar sel, kurang mengikuti belokan kecil)
+- Catatan kondisi nyata: lingkungan terbuka/tertutup, gedung tinggi, cuaca, perangkat.
+
+## Catatan Teknis Implementasi
+
+- `lib/services/location_service.dart` mengatur akurasi: `high` untuk GPS dan `low` untuk Network.
+- `lib/controllers/gps_location_controller.dart` dan `lib/controllers/network_location_controller.dart` menyimpan rekaman (`LocationRecord`) dan rata-rata latency fetch-once.
+- `lib/screens/location_hub_screen.dart` menumpuk jalur GPS dan Network di satu peta, menyediakan kontrol dan export CSV.
+
+Dengan prosedur ini, laporan dapat menyertakan data kuantitatif (akurasi, latency) dan bukti visual (pola pergerakan), sesuai kebutuhan tugas.

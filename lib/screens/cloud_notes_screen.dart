@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../controller/auth_controller.dart';
-import '../controller/cloud_note_controller.dart';
+import '../controllers/auth_controller.dart';
+import '../controllers/cloud_note_controller.dart';
 import '../models/note_model.dart';
 
 class CloudNotesScreen extends StatefulWidget {

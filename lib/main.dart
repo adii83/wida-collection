@@ -3,10 +3,11 @@ import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'config/app_theme.dart';
-import 'controller/auth_controller.dart';
-import 'controller/cloud_note_controller.dart';
-import 'controller/theme_controller.dart';
-import 'controller/wishlist_controller.dart';
+import 'controllers/auth_controller.dart';
+import 'controllers/cloud_note_controller.dart';
+import 'controllers/theme_controller.dart';
+import 'controllers/wishlist_controller.dart';
+import 'controllers/cart_controller.dart';
 import 'screens/auth_gate.dart';
 import 'services/hive_service.dart';
 import 'services/preferences_service.dart';
@@ -46,6 +47,10 @@ Future<void> main() async {
     permanent: true,
   );
   Get.put(
+    CartController(hiveService, supabaseService, authController),
+    permanent: true,
+  );
+  Get.put(
     CloudNoteController(supabaseService, authController),
     permanent: true,
   );
@@ -61,7 +66,7 @@ class WindaCollectionApp extends StatelessWidget {
     final themeController = Get.find<ThemeController>();
     return Obx(
       () => GetMaterialApp(
-        title: 'Winda Collection',
+        title: 'Wida Collection',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(themeController.seedColor.value),
         darkTheme: AppTheme.dark(themeController.seedColor.value),

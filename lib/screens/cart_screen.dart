@@ -3,8 +3,9 @@ import 'package:get/get.dart';
 
 import '../config/design_tokens.dart';
 import '../config/layout_values.dart';
-import '../data/dummy_products.dart';
 import '../models/cart_item.dart';
+import '../models/product_model.dart';
+import '../controllers/cart_controller.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/rounded_icon_button.dart';
 import 'checkout_screen.dart';
@@ -17,22 +18,12 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  final List<CartItem> _items = [
-    CartItem(product: dummyProducts[0], quantity: 1),
-    CartItem(product: dummyProducts[1], quantity: 2),
-    CartItem(product: dummyProducts[2], quantity: 1),
-  ];
+  late final CartController _cart;
 
-  double get subtotal => _items.fold(0, (sum, item) => sum + item.total);
-
-  void _updateQuantity(int index, int delta) {
-    setState(() {
-      _items[index].quantity = (_items[index].quantity + delta).clamp(1, 10);
-    });
-  }
-
-  void _removeItem(int index) {
-    setState(() => _items.removeAt(index));
+  @override
+  void initState() {
+    super.initState();
+    _cart = Get.find<CartController>();
   }
 
   @override
@@ -61,23 +52,28 @@ class _CartScreenState extends State<CartScreen> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  RoundedIconButton(
-                    icon: Icons.delete_outline,
-                    onPressed: _items.isEmpty
-                        ? null
-                        : () => setState(() => _items.clear()),
+                  Obx(
+                    () => RoundedIconButton(
+                      icon: Icons.delete_outline,
+                      onPressed: _cart.items.isEmpty
+                          ? null
+                          : () => _cart.clearCart(),
+                    ),
                   ),
                 ],
               ),
             ),
-            if (_items.isEmpty)
-              const Expanded(
-                child: Center(
-                  child: Text('Keranjang masih kosong nih. Yuk tambah produk!'),
-                ),
-              )
-            else
-              Expanded(
+            Obx(() {
+              if (_cart.items.isEmpty) {
+                return const Expanded(
+                  child: Center(
+                    child: Text(
+                      'Keranjang masih kosong nih. Yuk tambah produk!',
+                    ),
+                  ),
+                );
+              }
+              return Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.fromLTRB(
                     AppSpacing.page,
@@ -85,9 +81,15 @@ class _CartScreenState extends State<CartScreen> {
                     AppSpacing.page,
                     AppSpacing.section,
                   ),
-                  itemCount: _items.length,
+                  itemCount: _cart.items.length,
                   itemBuilder: (context, index) {
-                    final item = _items[index];
+                    final item = _cart.items[index];
+                    final product = Product(
+                      id: item.productId,
+                      name: item.name,
+                      image: item.image,
+                      price: item.price,
+                    );
                     return Container(
                       margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(16),
@@ -100,15 +102,15 @@ class _CartScreenState extends State<CartScreen> {
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(18),
-                            child: item.product.isAssetImage
+                            child: product.isAssetImage
                                 ? Image.asset(
-                                    item.product.image,
+                                    product.image,
                                     height: 90,
                                     width: 90,
                                     fit: BoxFit.cover,
                                   )
                                 : Image.network(
-                                    item.product.image,
+                                    product.image,
                                     height: 90,
                                     width: 90,
                                     fit: BoxFit.cover,
@@ -123,14 +125,14 @@ class _CartScreenState extends State<CartScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  item.product.name,
+                                  product.name,
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Rp ${item.product.price.toStringAsFixed(0)}',
+                                  'Rp ${product.price.toStringAsFixed(0)}',
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     color: AppColors.primaryPink,
                                     fontWeight: FontWeight.bold,
@@ -140,7 +142,10 @@ class _CartScreenState extends State<CartScreen> {
                                 Row(
                                   children: [
                                     _MiniStepper(
-                                      onTap: () => _updateQuantity(index, -1),
+                                      onTap: () => _cart.updateQuantity(
+                                        item.id,
+                                        item.quantity - 1,
+                                      ),
                                       icon: Icons.remove,
                                     ),
                                     Padding(
@@ -156,12 +161,16 @@ class _CartScreenState extends State<CartScreen> {
                                       ),
                                     ),
                                     _MiniStepper(
-                                      onTap: () => _updateQuantity(index, 1),
+                                      onTap: () => _cart.updateQuantity(
+                                        item.id,
+                                        item.quantity + 1,
+                                      ),
                                       icon: Icons.add,
                                     ),
                                     const Spacer(),
                                     IconButton(
-                                      onPressed: () => _removeItem(index),
+                                      onPressed: () =>
+                                          _cart.removeItem(item.id),
                                       icon: const Icon(
                                         Icons.close,
                                         color: AppColors.softGray,
@@ -177,7 +186,8 @@ class _CartScreenState extends State<CartScreen> {
                     );
                   },
                 ),
-              ),
+              );
+            }),
             Container(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.page,
@@ -209,10 +219,12 @@ class _CartScreenState extends State<CartScreen> {
                           color: AppColors.softGray,
                         ),
                       ),
-                      Text(
-                        'Rp ${subtotal.toStringAsFixed(0)}',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
+                      Obx(
+                        () => Text(
+                          'Rp ${_cart.subtotal.toStringAsFixed(0)}',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],
@@ -237,16 +249,30 @@ class _CartScreenState extends State<CartScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  GradientButton(
-                    label: 'Checkout',
-                    onPressed: _items.isEmpty
-                        ? null
-                        : () => Get.to(
-                            () => CheckoutScreen(
-                              items: _items,
-                              subtotal: subtotal,
+                  Obx(
+                    () => GradientButton(
+                      label: 'Checkout',
+                      onPressed: _cart.items.isEmpty
+                          ? null
+                          : () => Get.to(
+                              () => CheckoutScreen(
+                                items: _cart.items
+                                    .map(
+                                      (ci) => CartItem(
+                                        product: Product(
+                                          id: ci.productId,
+                                          name: ci.name,
+                                          image: ci.image,
+                                          price: ci.price,
+                                        ),
+                                        quantity: ci.quantity,
+                                      ),
+                                    )
+                                    .toList(),
+                                subtotal: _cart.subtotal,
+                              ),
                             ),
-                          ),
+                    ),
                   ),
                 ],
               ),

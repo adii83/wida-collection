@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 
 import '../config/design_tokens.dart';
 import '../config/layout_values.dart';
-import '../controller/auth_controller.dart';
+import '../controllers/auth_controller.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/rounded_icon_button.dart';
 import 'auth_screen.dart';

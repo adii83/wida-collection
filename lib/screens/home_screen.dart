@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 
 import '../config/design_tokens.dart';
 import '../config/layout_values.dart';
-import '../controller/theme_controller.dart';
+import '../controllers/theme_controller.dart';
 import '../data/dummy_products.dart';
 import '../widgets/animated_banner_explicit.dart';
 import '../widgets/animated_banner_implicit.dart';
@@ -18,6 +18,7 @@ import 'product_detail_screen.dart';
 import 'profile_screen.dart';
 import 'search_screen.dart';
 import 'wishlist_screen.dart';
+import 'location_center_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -33,11 +34,37 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _currentIndex = index);
   }
 
+  Widget _navItem(IconData icon, String label, int index) {
+    final isActive = _currentIndex == index;
+
+    return InkWell(
+      onTap: () => setState(() => _currentIndex = index),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 30,
+            color: isActive ? const Color(0xFFFF5E9D) : Colors.grey,
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 16,
+              color: isActive ? const Color(0xFFFF5E9D) : Colors.grey,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final pages = [
       _HomeLanding(onNavigateToTab: _handleTabChange),
       const SearchScreen(),
+      const LocationCenterScreen(),
       const CartScreen(),
       const ProfileScreen(),
     ];
@@ -48,34 +75,47 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       body: IndexedStack(index: _currentIndex, children: pages),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: barColor,
-          boxShadow: [
-            BoxShadow(
-              color: (isDark ? Colors.black : Colors.black).withValues(
-                alpha: isDark ? 0.3 : 0.06,
+      // Floating button (tombol Location)
+      floatingActionButton: GestureDetector(
+        onTap: () => setState(() => _currentIndex = 2),
+        child: Container(
+          width: 70,
+          height: 70,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              colors: [Color(0xFFFF8FB1), Color(0xFFFF5E9D)],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFF5E9D).withOpacity(0.25),
+                blurRadius: 12,
+                offset: Offset(0, 4),
               ),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
+            ],
+          ),
+          child: const Icon(Icons.location_on, size: 34, color: Colors.white),
         ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (value) => setState(() => _currentIndex = value),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_filled),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_bag),
-              label: 'Cart',
-            ),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-          ],
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8.0,
+        child: SizedBox(
+          height: 70,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _navItem(Icons.home_filled, "Home", 0),
+              _navItem(Icons.search, "Search", 1),
+
+              const SizedBox(width: 30),
+
+              _navItem(Icons.shopping_bag, "Cart", 3),
+              _navItem(Icons.person, "Profile", 4),
+            ],
+          ),
         ),
       ),
     );
@@ -196,7 +236,7 @@ class _HomeLanding extends StatelessWidget {
                         AppSpacing.hItem,
                         RoundedIconButton(
                           icon: Icons.shopping_bag_outlined,
-                          onPressed: () => onNavigateToTab(2),
+                          onPressed: () => onNavigateToTab(3),
                         ),
                       ],
                     ),

@@ -3,7 +3,9 @@ import 'package:get/get.dart';
 
 import '../config/design_tokens.dart';
 import '../config/layout_values.dart';
-import '../controller/wishlist_controller.dart';
+import '../controllers/wishlist_controller.dart';
+import '../controllers/auth_controller.dart';
+import '../controllers/cart_controller.dart';
 import '../data/dummy_products.dart';
 import '../models/cart_item.dart';
 import '../models/product_model.dart';
@@ -98,23 +100,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     ),
                               ),
                               AppSpacing.hItem,
-                                Obx(() {
+                              Obx(() {
                                 final isFavorite = _wishlistController
-                                  .isFavorite(widget.product.id);
+                                    .isFavorite(widget.product.id);
                                 return RoundedIconButton(
                                   icon: isFavorite
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
                                   iconColor: isFavorite
-                                    ? Colors.white
-                                    : AppColors.primaryPink,
+                                      ? Colors.white
+                                      : AppColors.primaryPink,
                                   backgroundColor: isFavorite
-                                    ? AppColors.primaryPink
-                                    : Colors.white,
+                                      ? AppColors.primaryPink
+                                      : Colors.white,
                                   onPressed: () => _wishlistController
-                                    .toggleWishlist(widget.product),
+                                      .toggleWishlist(widget.product),
                                 );
-                                }),
+                              }),
                             ],
                           ),
                         ),
@@ -328,12 +330,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () =>
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Ditambahkan ke keranjang'),
-                            ),
-                          ),
+                      onPressed: _handleAddToCart,
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(52),
                         side: const BorderSide(color: AppColors.primaryPink),
@@ -365,6 +362,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _handleAddToCart() {
+    final cart = Get.find<CartController>();
+    final auth = Get.find<AuthController>();
+    cart.addItem(widget.product, quantity: quantity);
+    final userId = auth.currentUser.value?.id;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          userId != null
+              ? 'Ditambahkan ke keranjang (tersinkronisasi bila online)'
+              : 'Ditambahkan ke keranjang (disimpan lokal)',
         ),
       ),
     );

@@ -4,15 +4,20 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/note_model.dart';
 import '../models/wishlist_item.dart';
+import '../models/cart_item_model.dart';
 
 class SupabaseService extends GetxService {
   SupabaseClient? _client;
   RealtimeChannel? _notesChannel;
   RealtimeChannel? _wishlistChannel;
+  RealtimeChannel? _cartChannel;
   bool _initialized = false;
 
   SupabaseClient? get client => _client;
   bool get isReady => _initialized && _client != null;
+
+  /// Convenience getter for current authenticated user's id (nullable)
+  String? get currentUserId => _client?.auth.currentUser?.id;
 
   Future<SupabaseService> init() async {
     if (!SupabaseConfig.isConfigured) {
@@ -112,6 +117,8 @@ class SupabaseService extends GetxService {
     _notesChannel = null;
     _wishlistChannel?.unsubscribe();
     _wishlistChannel = null;
+    _cartChannel?.unsubscribe();
+    _cartChannel = null;
   }
 
   Future<List<WishlistItem>> fetchWishlist(String owner) async {
@@ -160,6 +167,55 @@ class SupabaseService extends GetxService {
         event: PostgresChangeEvent.all,
         schema: 'public',
         table: 'wishlists',
+        callback: onChange,
+      )
+      ..subscribe();
+  }
+
+  Future<List<CartItemModel>> fetchCart(String owner) async {
+    if (!isReady) return [];
+    final data = await _client!
+        .from('carts')
+        .select()
+        .eq('owner', owner)
+        .order('updated_at', ascending: false);
+    return (data as List<dynamic>)
+        .map(
+          (row) => CartItemModel.fromMap(
+            Map<String, dynamic>.from(row as Map<dynamic, dynamic>),
+          ),
+        )
+        .toList();
+  }
+
+  Future<CartItemModel?> upsertCartItem(
+    CartItemModel item,
+    String owner,
+  ) async {
+    if (!isReady) return null;
+    final payload = await _client!
+        .from('carts')
+        .upsert(item.toMap(owner: owner))
+        .select()
+        .single();
+    return CartItemModel.fromMap(
+      Map<String, dynamic>.from(payload as Map<dynamic, dynamic>),
+    );
+  }
+
+  Future<void> deleteCartItem(String id) async {
+    if (!isReady) return;
+    await _client!.from('carts').delete().eq('id', id);
+  }
+
+  void subscribeCart(void Function(PostgresChangePayload payload) onChange) {
+    if (!isReady) return;
+    _cartChannel?.unsubscribe();
+    _cartChannel = _client!.channel('public:carts')
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'carts',
         callback: onChange,
       )
       ..subscribe();
