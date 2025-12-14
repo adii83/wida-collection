@@ -8,10 +8,14 @@ import 'controllers/cloud_note_controller.dart';
 import 'controllers/theme_controller.dart';
 import 'controllers/wishlist_controller.dart';
 import 'controllers/cart_controller.dart';
+import 'controllers/notification_controller.dart';
 import 'screens/auth_gate.dart';
 import 'services/hive_service.dart';
 import 'services/preferences_service.dart';
 import 'services/supabase_service.dart';
+import 'services/notification_service.dart';
+import 'screens/notification_center_screen.dart';
+import 'routes/app_routes.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +40,10 @@ Future<void> main() async {
     () async => SupabaseService().init(),
     permanent: true,
   );
+  final notificationService = await Get.putAsync<NotificationService>(
+    () async => NotificationService().init(),
+    permanent: true,
+  );
 
   Get.put(ThemeController(preferences), permanent: true);
   final authController = Get.put(
@@ -54,6 +62,7 @@ Future<void> main() async {
     CloudNoteController(supabaseService, authController),
     permanent: true,
   );
+  Get.put(NotificationController(notificationService), permanent: true);
 
   runApp(const WindaCollectionApp());
 }
@@ -71,6 +80,12 @@ class WindaCollectionApp extends StatelessWidget {
         theme: AppTheme.light(themeController.seedColor.value),
         darkTheme: AppTheme.dark(themeController.seedColor.value),
         themeMode: themeController.themeMode.value,
+        getPages: [
+          GetPage(
+            name: AppRoutes.notificationCenter,
+            page: NotificationCenterScreen.new,
+          ),
+        ],
         home: const AuthGate(),
       ),
     );

@@ -14,11 +14,13 @@ import '../widgets/product_card.dart';
 import '../widgets/rounded_icon_button.dart';
 import 'cart_screen.dart';
 import 'cloud_notes_screen.dart';
+import 'notification_center_screen.dart';
 import 'product_detail_screen.dart';
 import 'profile_screen.dart';
 import 'search_screen.dart';
 import 'wishlist_screen.dart';
 import 'location_center_screen.dart';
+import '../routes/app_routes.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -171,6 +173,12 @@ class _HomeLanding extends StatelessWidget {
       description: 'Sinkron otomatis via Supabase.',
       destinationBuilder: (_) => const CloudNotesScreen(),
     ),
+    _FeatureShortcutData(
+      icon: Icons.notifications_active,
+      title: 'Promo Notification Lab',
+      description: 'Eksperimen lifecycle notifikasi modul 6.',
+      destinationBuilder: (_) => const NotificationCenterScreen(),
+    ),
   ];
 
   @override
@@ -232,6 +240,12 @@ class _HomeLanding extends StatelessWidget {
                         RoundedIconButton(
                           icon: Icons.favorite_border,
                           onPressed: () => Get.to(() => const WishlistScreen()),
+                        ),
+                        AppSpacing.hItem,
+                        RoundedIconButton(
+                          icon: Icons.notifications_active_outlined,
+                          onPressed: () =>
+                              Get.toNamed(AppRoutes.notificationCenter),
                         ),
                         AppSpacing.hItem,
                         RoundedIconButton(

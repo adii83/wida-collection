@@ -1,4 +1,4 @@
-package com.example.winda_collection
+package wida.collection
 
 import io.flutter.embedding.android.FlutterActivity
 
