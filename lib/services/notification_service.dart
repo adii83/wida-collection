@@ -28,11 +28,28 @@ const AndroidNotificationChannel promoStatusChannel =
       sound: RawResourceAndroidNotificationSound('natal'),
     );
 
+const AndroidNotificationChannel customLabChannel = AndroidNotificationChannel(
+  'custom_lab_channel',
+  'Custom Notification',
+  description: 'Notifikasi lokal dari Custom Notification.',
+  importance: Importance.high,
+  playSound: true,
+  sound: RawResourceAndroidNotificationSound('gopgopgop'),
+);
+
 class NotificationService extends GetxService {
   NotificationService();
 
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+
+  int _toSigned32(String source) {
+    final hash = source.hashCode & 0x7fffffff;
+    if (hash == 0) {
+      return DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    }
+    return hash;
+  }
 
   RemoteMessageCallback? _onRemoteMessage;
   PayloadCallback? _onPayloadTap;
@@ -86,6 +103,7 @@ class NotificationService extends GetxService {
         >();
     if (androidImpl != null) {
       await androidImpl.createNotificationChannel(promoStatusChannel);
+      await androidImpl.createNotificationChannel(customLabChannel);
     }
     _localReady = true;
   }
@@ -178,6 +196,42 @@ class NotificationService extends GetxService {
     );
   }
 
+  Future<void> showCustomLocalNotification({
+    required String id,
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+  }) async {
+    if (!_localReady) {
+      await _configureLocalNotifications();
+    }
+    final mergedPayload = {...?data, 'id': id, 'title': title, 'body': body};
+    final encodedPayload = jsonEncode(mergedPayload);
+
+    final androidDetails = AndroidNotificationDetails(
+      customLabChannel.id,
+      customLabChannel.name,
+      channelDescription: customLabChannel.description,
+      importance: Importance.high,
+      priority: Priority.high,
+      playSound: true,
+      sound: customLabChannel.sound,
+      icon: '@mipmap/ic_launcher',
+    );
+
+    final iosDetails = const DarwinNotificationDetails(sound: 'gopgopgop.mp3');
+
+    final notificationId = _toSigned32(id);
+
+    await _localNotifications.show(
+      notificationId,
+      title,
+      body,
+      NotificationDetails(android: androidDetails, iOS: iosDetails),
+      payload: encodedPayload,
+    );
+  }
+
   void _handleNotificationResponse(NotificationResponse response) {
     if (response.payload == null) return;
     final payload = AppNotification.decodePayload(response.payload);
@@ -201,6 +255,7 @@ class NotificationService extends GetxService {
         >();
     if (androidImpl != null) {
       await androidImpl.createNotificationChannel(promoStatusChannel);
+      await androidImpl.createNotificationChannel(customLabChannel);
     }
     final payload = <String, dynamic>{
       ...message.data,

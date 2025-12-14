@@ -15,6 +15,7 @@ class NotificationController extends GetxController {
   final notifications = <AppNotification>[].obs;
   final RxBool permissionGranted = false.obs;
   final RxnString fcmToken = RxnString();
+  final RxBool isCustomNotifying = false.obs;
 
   @override
   void onInit() {
@@ -84,6 +85,51 @@ class NotificationController extends GetxController {
       );
     }
     Get.toNamed(AppRoutes.notificationCenter);
+  }
+
+  Future<void> triggerCustomNotification() async {
+    if (isCustomNotifying.value) return;
+    const title = 'Custom Notification';
+    const body = 'Ini custom notification dengan suara khusus 💫.';
+    const customType = NotificationType.unknown;
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    final payload = <String, dynamic>{
+      'id': id,
+      'title': title,
+      'body': body,
+      'type': customType.name,
+      'origin': 'local',
+      'channel': 'custom_lab',
+    };
+
+    try {
+      isCustomNotifying.value = true;
+      await _service.showCustomLocalNotification(
+        id: id,
+        title: title,
+        body: body,
+        data: payload,
+      );
+      final entry = AppNotification(
+        id: id,
+        title: title,
+        body: body,
+        type: customType,
+        productId: null,
+        receivedAt: DateTime.now(),
+        data: payload,
+        origin: NotificationOrigin.foreground,
+      );
+      _insert(entry);
+    } catch (e) {
+      Get.snackbar(
+        'Gagal mengirim notifikasi',
+        e.toString(),
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } finally {
+      isCustomNotifying.value = false;
+    }
   }
 
   Product? _findProduct(String id) {

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "398578610862",
+    "project_id": "wida-collection",
+    "storage_bucket": "wida-collection.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:398578610862:android:25f1e5bce0081d332a733f",
+        "android_client_info": {
+          "package_name": "wida.collection"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAgkBlMn1HCTI3S3JGDMzqUHkjceNnyRFM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

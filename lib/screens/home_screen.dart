@@ -175,7 +175,7 @@ class _HomeLanding extends StatelessWidget {
     ),
     _FeatureShortcutData(
       icon: Icons.notifications_active,
-      title: 'Promo Notification Lab',
+      title: 'Notification Lab',
       description: 'Eksperimen lifecycle notifikasi modul 6.',
       destinationBuilder: (_) => const NotificationCenterScreen(),
     ),

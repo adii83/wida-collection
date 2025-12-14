@@ -31,18 +31,21 @@ class NotificationCenterScreen extends GetView<NotificationController> {
             _buildTokenCard(context),
             const SizedBox(height: 12),
             _PayloadSampleCard(),
+            const SizedBox(height: 12),
+            const _CustomNotificationCard(),
             const SizedBox(height: 16),
             if (controller.notifications.isEmpty)
               _EmptyState(permissionGranted: controller.permissionGranted.value)
             else
-              ...controller.notifications
-                  .map(
-                    (entry) => _NotificationTile(
-                      entry: entry,
-                      onTap: () => controller.openEntry(entry),
-                    ),
-                  )
-                  ,
+              ...controller.notifications.map((entry) {
+                final isCustom =
+                    entry.data['origin'] == 'local' && entry.productId == null;
+                return _NotificationTile(
+                  entry: entry,
+                  isCustom: isCustom,
+                  onTap: isCustom ? null : () => controller.openEntry(entry),
+                );
+              }),
           ],
         ),
       ),
@@ -98,36 +101,59 @@ class NotificationCenterScreen extends GetView<NotificationController> {
 }
 
 class _NotificationTile extends StatelessWidget {
-  const _NotificationTile({required this.entry, required this.onTap});
+  const _NotificationTile({
+    required this.entry,
+    required this.isCustom,
+    this.onTap,
+  });
 
   final AppNotification entry;
-  final VoidCallback onTap;
+  final bool isCustom;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final subtitle = '${entry.body}\nDiterima: ${entry.receivedAt.toLocal()}';
-    final badgeColor = entry.type == NotificationType.promo
+    final localDate = entry.receivedAt.toLocal();
+    final dateLabel =
+        '${localDate.year}-${localDate.month.toString().padLeft(2, '0')}-${localDate.day.toString().padLeft(2, '0')}';
+    final badgeColor = isCustom
+        ? Colors.pinkAccent
+        : entry.type == NotificationType.promo
         ? Colors.pinkAccent
         : entry.type == NotificationType.orderStatus
         ? Colors.teal
         : Colors.grey;
+    final dateColor = isCustom
+        ? const Color.fromARGB(255, 169, 169, 169)
+        : const Color.fromARGB(255, 169, 169, 169);
+    final iconData = isCustom
+        ? Icons.notifications_active
+        : entry.type == NotificationType.promo
+        ? Icons.local_offer
+        : entry.type == NotificationType.orderStatus
+        ? Icons.inventory_2
+        : Icons.notifications;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: badgeColor.withOpacity(0.15),
-          child: Icon(
-            entry.type == NotificationType.promo
-                ? Icons.local_offer
-                : entry.type == NotificationType.orderStatus
-                ? Icons.inventory_2
-                : Icons.notifications,
-            color: badgeColor,
-          ),
+          child: Icon(iconData, color: badgeColor),
         ),
         title: Text(entry.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right),
+        subtitle: Text.rich(
+          TextSpan(
+            text: '${entry.body}\n',
+            style: Theme.of(context).textTheme.bodyMedium,
+            children: [
+              TextSpan(
+                text: dateLabel,
+                style: TextStyle(color: dateColor),
+              ),
+            ],
+          ),
+        ),
+        trailing: onTap == null ? null : const Icon(Icons.chevron_right),
         onTap: onTap,
       ),
     );
@@ -184,6 +210,55 @@ class _PayloadSampleCard extends StatelessWidget {
             ),
             SizedBox(height: 8),
             SelectableText(sample, style: TextStyle(fontFamily: 'monospace')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CustomNotificationCard extends StatelessWidget {
+  const _CustomNotificationCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<NotificationController>();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.music_note, color: Colors.pinkAccent),
+                SizedBox(width: 8),
+                Text(
+                  'Custom Notification',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text('Ayo, Test Notifikasi khusus dengan suara menarik!!!'),
+            const SizedBox(height: 12),
+            Obx(
+              () => ElevatedButton.icon(
+                onPressed: controller.isCustomNotifying.value
+                    ? null
+                    : controller.triggerCustomNotification,
+                icon: Icon(
+                  controller.isCustomNotifying.value
+                      ? Icons.hourglass_top
+                      : Icons.play_arrow,
+                ),
+                label: Text(
+                  controller.isCustomNotifying.value
+                      ? 'Mengirim notifikasi...'
+                      : 'Play Custom Notification',
+                ),
+              ),
+            ),
           ],
         ),
       ),
