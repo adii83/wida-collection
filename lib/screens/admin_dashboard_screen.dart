@@ -5,6 +5,7 @@ import 'admin_product_management_screen.dart';
 import 'admin_order_management_screen.dart';
 import 'admin_refund_management_screen.dart';
 import 'admin_notification_screen.dart';
+import 'auth_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -54,9 +55,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   leading: const Icon(Icons.logout),
                   title: const Text('Logout'),
                   onTap: () {
+                    // Tutup popup menu terlebih dahulu
                     Navigator.pop(context);
                     adminController.logout();
-                    Get.back();
+                    // Arahkan kembali ke halaman login unified
+                    Get.offAll(() => const AuthScreen());
                   },
                 ),
               ),

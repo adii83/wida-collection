@@ -90,7 +90,7 @@ app.*.map.json
 lib.zip
 lib_dump.md
 lib_dump.txt
-.env
+
 
 # --- Coverage / reports ---
 coverage/

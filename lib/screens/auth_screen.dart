@@ -4,9 +4,11 @@ import 'package:get/get.dart';
 import '../config/design_tokens.dart';
 import '../config/layout_values.dart';
 import '../controllers/auth_controller.dart';
+import '../controllers/admin_controller.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/rounded_icon_button.dart';
-import 'admin_login_screen.dart';
+import 'admin_dashboard_screen.dart';
+import 'home_screen.dart';
 
 enum AuthMode { login, signup }
 
@@ -43,38 +45,31 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_auth.canUseSupabase) {
-      Get.dialog(
-        AlertDialog(
-          title: const Text('Mode Offline'),
-          content: const Text(
-            'Supabase tidak tersedia. Anda dapat:\n\n'
-            '• Lewati login dan gunakan aplikasi tanpa sinkronisasi\n'
-            '• Masuk ke Admin Panel untuk mengelola produk',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Get.back(); // Close dialog
-                Get.offAll(() => const AdminLoginScreen());
-              },
-              child: const Text('Admin Panel'),
-            ),
-            TextButton(
-              onPressed: () {
-                Get.back(); // Close dialog
-                Get.back(); // Back to previous screen (HomeScreen)
-              },
-              child: const Text('Skip & Lanjut'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
     if (!_formKey.currentState!.validate()) return;
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
+
+    // Jalur login admin: gunakan kredensial demo dan langsung ke dashboard
+    if (_isLogin &&
+        email == 'admin@widacollection.com' &&
+        password == 'admin123') {
+      final adminController = Get.find<AdminController>();
+      final success = await adminController.login(email, password);
+      if (success && mounted) {
+        Get.offAll(() => const AdminDashboardScreen());
+      }
+      return;
+    }
+
+    if (!_auth.canUseSupabase) {
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) {
+        navigator.pop();
+      } else {
+        Get.offAll(() => const HomeScreen());
+      }
+      return;
+    }
 
     if (!_isLogin && password != _confirmPasswordController.text.trim()) {
       Get.snackbar('Cek Ulang', 'Konfirmasi password belum sama');
@@ -91,6 +86,15 @@ class _AuthScreenState extends State<AuthScreen> {
         'Wishlist Anda kini terhubung ke Supabase.',
         snackPosition: SnackPosition.BOTTOM,
       );
+
+      // Setelah login/daftar user biasa, kembali ke layar sebelumnya
+      // atau ke Home jika AuthScreen menjadi root.
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) {
+        navigator.pop();
+      } else {
+        Get.offAll(() => const HomeScreen());
+      }
     }
   }
 
@@ -111,18 +115,17 @@ class _AuthScreenState extends State<AuthScreen> {
               constraints: const BoxConstraints(maxWidth: 520),
               child: Obx(() {
                 if (_auth.isLoggedIn) {
-                  final user = _auth.currentUser.value;
-                  return _AccountSummary(
-                    email: user?.email ?? '-',
-                    onSignOut: () async {
-                      final navigator = Navigator.of(context);
-                      await _auth.signOut();
-                      if (!mounted) return;
-                      if (navigator.canPop()) {
-                        navigator.pop();
-                      }
-                    },
-                  );
+                  // Jika user sudah login, langsung tutup AuthScreen
+                  // agar panel "Sudah Masuk" tidak sempat tampil.
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    final navigator = Navigator.of(context);
+                    if (navigator.canPop()) {
+                      navigator.pop();
+                    } else {
+                      Get.offAll(() => const HomeScreen());
+                    }
+                  });
+                  return const SizedBox.shrink();
                 }
 
                 return SingleChildScrollView(
