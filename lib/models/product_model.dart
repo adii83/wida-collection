@@ -3,12 +3,14 @@ class Product {
   final String name;
   final String image; // can be asset path or URL
   final double price;
+  final String description;
 
   Product({
     required this.id,
     required this.name,
     required this.image,
     required this.price,
+    this.description = '',
   });
 
   // Factory to construct from API responses (e.g., dummyjson)
@@ -31,7 +33,13 @@ class Product {
     final price = priceRaw is num
         ? priceRaw.toDouble()
         : double.tryParse(priceRaw?.toString() ?? '') ?? 0.0;
-    return Product(id: id, name: name, image: resolvedImage, price: price);
+    return Product(
+      id: id,
+      name: name,
+      image: resolvedImage,
+      price: price,
+      description: (json['description'] ?? '').toString(),
+    );
   }
 
   bool get isAssetImage => image.startsWith('assets/');

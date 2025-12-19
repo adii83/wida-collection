@@ -121,12 +121,12 @@ class _AdminOrderManagementScreenState
                     border: OutlineInputBorder(),
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'pending', child: Text('Pending')),
+                    DropdownMenuItem(value: 'pending', child: Text('Dikemas')),
                     DropdownMenuItem(
                       value: 'processing',
-                      child: Text('Processing'),
+                      child: Text('Dikirim'),
                     ),
-                    DropdownMenuItem(value: 'shipped', child: Text('Shipped')),
+                    DropdownMenuItem(value: 'shipped', child: Text('Diterima')),
                     DropdownMenuItem(
                       value: 'delivered',
                       child: Text('Delivered'),
@@ -235,9 +235,9 @@ class _AdminOrderManagementScreenState
                 child: Row(
                   children: [
                     _buildFilterChip(controller, 'all', 'Semua'),
-                    _buildFilterChip(controller, 'pending', 'Pending'),
-                    _buildFilterChip(controller, 'processing', 'Processing'),
-                    _buildFilterChip(controller, 'shipped', 'Shipped'),
+                    _buildFilterChip(controller, 'pending', 'Dikemas'),
+                    _buildFilterChip(controller, 'processing', 'Dikirim'),
+                    _buildFilterChip(controller, 'shipped', 'Diterima'),
                     _buildFilterChip(controller, 'delivered', 'Delivered'),
                     _buildFilterChip(controller, 'cancelled', 'Cancelled'),
                   ],
@@ -352,6 +352,23 @@ class _AdminOrderManagementScreenState
     );
   }
 
+  String _getStatusLabel(String status) {
+    switch (status) {
+      case 'pending':
+        return 'Dikemas';
+      case 'processing':
+        return 'Dikirim';
+      case 'shipped':
+        return 'Diterima';
+      case 'delivered':
+        return 'Delivered';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return status.toUpperCase();
+    }
+  }
+
   Widget _buildStatusChip(String status) {
     Color color;
     switch (status) {
@@ -381,7 +398,7 @@ class _AdminOrderManagementScreenState
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        status.toUpperCase(),
+        _getStatusLabel(status),
         style: TextStyle(
           color: color,
           fontSize: 12,

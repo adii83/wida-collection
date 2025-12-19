@@ -224,15 +224,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               const SizedBox(height: 12),
               _buildMenuCard(
                 context,
-                icon: Icons.payment,
-                title: 'Kelola Pembayaran',
-                subtitle: 'Verifikasi dan update status pembayaran',
-                color: Colors.green,
-                onTap: () => Get.to(() => const AdminOrderManagementScreen()),
-              ),
-              const SizedBox(height: 12),
-              _buildMenuCard(
-                context,
                 icon: Icons.money_off,
                 title: 'Kelola Refund',
                 subtitle: 'Proses permintaan refund',
