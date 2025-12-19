@@ -254,7 +254,7 @@ class _HomeLanding extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                   AppSpacing.page,
-                  AppSpacing.section,
+                  AppSpacing.item, // rapatkan heading kategori ke slider
                   AppSpacing.page,
                   0,
                 ),
@@ -626,13 +626,6 @@ class _PromoBannerSectionState extends State<_PromoBannerSection> {
 
   double get _currentCollapsedHeight => _collapsedHeights[_currentPage];
 
-  double get _indicatorOffset {
-    final difference = _currentBannerHeight - _currentCollapsedHeight;
-    return difference > 0 ? difference : 0;
-  }
-
-  double get _indicatorMarginTop => 6 + _indicatorOffset;
-
   void _handleBannerHeightChange(int index, double height) {
     if (_bannerHeights[index] == height) return;
     _bannerHeights[index] = height;
@@ -657,6 +650,11 @@ class _PromoBannerSectionState extends State<_PromoBannerSection> {
 
   @override
   Widget build(BuildContext context) {
+    final extraSpace =
+        AnimatedBannerExplicit.expandedHeight - _currentBannerHeight;
+    final indicatorSpacing = (6 - extraSpace).clamp(-24, 12).toDouble();
+    final indicatorMargin = indicatorSpacing > 0 ? indicatorSpacing : 0.0;
+    final indicatorShift = indicatorSpacing < 0 ? indicatorSpacing : 0.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -669,43 +667,52 @@ class _PromoBannerSectionState extends State<_PromoBannerSection> {
           ),
         ),
         const SizedBox(height: 16),
-        Padding(
-          padding: AppSpacing.pagePadding,
-          child: SizedBox(
-            height: AnimatedBannerExplicit.expandedHeight,
-            child: PageView.builder(
-              controller: _pageController,
-              physics: const BouncingScrollPhysics(),
-              padEnds: false,
-              itemCount: _bannerCount,
-              onPageChanged: (index) => setState(() => _currentPage = index),
-              itemBuilder: (context, index) => Padding(
-                padding: EdgeInsets.only(
-                  right: index == _bannerCount - 1 ? 0 : 12,
-                ),
-                child: _buildBanner(index),
+        SizedBox(
+          height: AnimatedBannerExplicit.expandedHeight,
+          child: PageView.builder(
+            controller: _pageController,
+            physics: const BouncingScrollPhysics(),
+            padEnds: false,
+            itemCount: _bannerCount,
+            onPageChanged: (index) => setState(() => _currentPage = index),
+            itemBuilder: (context, index) => Padding(
+              padding: EdgeInsets.only(
+                left: index == 0 ? AppSpacing.page : 12,
+                right: index == _bannerCount - 1 ? AppSpacing.page : 12,
               ),
+              child: _buildBanner(index),
             ),
           ),
         ),
         AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
-          margin: EdgeInsets.only(top: _indicatorMarginTop),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              _bannerCount,
-              (index) => AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                height: 6,
-                width: _currentPage == index ? 24 : 8,
-                decoration: BoxDecoration(
-                  color: _currentPage == index
-                      ? AppColors.primaryPink
-                      : AppColors.primaryPink.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(8),
+          margin: EdgeInsets.only(top: indicatorMargin),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: indicatorShift),
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+            builder: (context, value, child) {
+              return Transform.translate(
+                offset: Offset(0, value),
+                child: child,
+              );
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                _bannerCount,
+                (index) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  height: 6,
+                  width: _currentPage == index ? 24 : 8,
+                  decoration: BoxDecoration(
+                    color: _currentPage == index
+                        ? AppColors.primaryPink
+                        : AppColors.primaryPink.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
             ),

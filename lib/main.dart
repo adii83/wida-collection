@@ -72,7 +72,7 @@ Future<void> main() async {
     permanent: true,
   );
   Get.put(
-    CloudNoteController(supabaseService, authController),
+    CloudNoteController(supabaseService, authController, hiveService),
     permanent: true,
   );
   Get.put(
