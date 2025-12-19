@@ -8,6 +8,7 @@ import '../widgets/gradient_button.dart';
 import '../widgets/rounded_icon_button.dart';
 import 'auth_screen.dart';
 import 'wishlist_screen.dart';
+import 'admin_login_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -117,6 +118,14 @@ class ProfileScreen extends StatelessWidget {
                       'Pengaturan lanjutan tersedia di halaman tema',
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  _MenuTile(
+                    icon: Icons.admin_panel_settings,
+                    title: 'Admin Panel',
+                    subtitle: 'Kelola produk, order & notifikasi',
+                    iconColor: Colors.purple,
+                    onTap: () => Get.to(() => const AdminLoginScreen()),
+                  ),
                 ],
               ),
             ),
@@ -206,12 +215,14 @@ class _MenuTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.iconColor,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -228,7 +239,11 @@ class _MenuTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            RoundedIconButton(icon: icon, onPressed: onTap),
+            RoundedIconButton(
+              icon: icon,
+              onPressed: onTap,
+              iconColor: iconColor,
+            ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(

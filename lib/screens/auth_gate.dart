@@ -9,13 +9,19 @@ class AuthGate extends GetWidget<AuthController> {
 
   @override
   Widget build(BuildContext context) {
+    // Jika Supabase tidak tersedia, langsung ke HomeScreen tanpa auth
+    if (!controller.canUseSupabase) {
+      return const HomeScreen();
+    }
+
+    // Reactive: pantau perubahan currentUser
     return Obx(() {
-      if (!controller.canUseSupabase) {
+      final user = controller.currentUser.value;
+
+      if (user != null) {
         return const HomeScreen();
       }
-      if (controller.isLoggedIn) {
-        return const HomeScreen();
-      }
+
       return const AuthScreen();
     });
   }

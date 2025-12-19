@@ -8,14 +8,22 @@ import 'controllers/cloud_note_controller.dart';
 import 'controllers/theme_controller.dart';
 import 'controllers/wishlist_controller.dart';
 import 'controllers/cart_controller.dart';
+import 'controllers/admin_controller.dart';
 import 'screens/auth_gate.dart';
 import 'services/hive_service.dart';
 import 'services/preferences_service.dart';
 import 'services/supabase_service.dart';
+import 'services/admin_service.dart';
 import 'controllers/notification_controller.dart';
 import 'services/notification_service.dart';
 import 'services/product_service.dart';
 import 'screens/notification_center_screen.dart';
+import 'screens/admin_login_screen.dart';
+import 'screens/admin_dashboard_screen.dart';
+import 'screens/admin_product_management_screen.dart';
+import 'screens/admin_order_management_screen.dart';
+import 'screens/admin_refund_management_screen.dart';
+import 'screens/admin_notification_screen.dart';
 import 'routes/app_routes.dart';
 
 Future<void> main() async {
@@ -72,6 +80,10 @@ Future<void> main() async {
     permanent: true,
   );
 
+  // Admin services and controllers
+  final adminService = Get.put(AdminService(supabaseService), permanent: true);
+  Get.put(AdminController(adminService), permanent: true);
+
   runApp(const WindaCollectionApp());
 }
 
@@ -92,6 +104,30 @@ class WindaCollectionApp extends StatelessWidget {
           GetPage(
             name: AppRoutes.notificationCenter,
             page: NotificationCenterScreen.new,
+          ),
+          GetPage(
+            name: AppRoutes.adminLogin,
+            page: () => const AdminLoginScreen(),
+          ),
+          GetPage(
+            name: AppRoutes.adminDashboard,
+            page: () => const AdminDashboardScreen(),
+          ),
+          GetPage(
+            name: AppRoutes.adminProductManagement,
+            page: () => const AdminProductManagementScreen(),
+          ),
+          GetPage(
+            name: AppRoutes.adminOrderManagement,
+            page: () => const AdminOrderManagementScreen(),
+          ),
+          GetPage(
+            name: AppRoutes.adminRefundManagement,
+            page: () => const AdminRefundManagementScreen(),
+          ),
+          GetPage(
+            name: AppRoutes.adminNotification,
+            page: () => const AdminNotificationScreen(),
           ),
         ],
         home: const AuthGate(),

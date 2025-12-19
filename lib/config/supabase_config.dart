@@ -4,11 +4,15 @@ class SupabaseConfig {
   static const _defaultUrl = 'https://your-project.supabase.co';
   static const _defaultAnonKey = 'public-anon-key';
 
+  static String _safeEnv(String key) {
+    if (!dotenv.isInitialized) return '';
+    return dotenv.env[key] ?? '';
+  }
+
   static String get supabaseUrl {
-    final envValue = dotenv.env['SUPABASE_URL'];
-    if (envValue != null && envValue.isNotEmpty) {
-      return envValue;
-    }
+    final envValue = _safeEnv('SUPABASE_URL');
+    if (envValue.isNotEmpty) return envValue;
+
     const dartDefineValue = String.fromEnvironment(
       'SUPABASE_URL',
       defaultValue: _defaultUrl,
@@ -17,10 +21,9 @@ class SupabaseConfig {
   }
 
   static String get supabaseAnonKey {
-    final envValue = dotenv.env['SUPABASE_ANON_KEY'];
-    if (envValue != null && envValue.isNotEmpty) {
-      return envValue;
-    }
+    final envValue = _safeEnv('SUPABASE_ANON_KEY');
+    if (envValue.isNotEmpty) return envValue;
+
     const dartDefineValue = String.fromEnvironment(
       'SUPABASE_ANON_KEY',
       defaultValue: _defaultAnonKey,

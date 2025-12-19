@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../config/design_tokens.dart';
 import '../config/layout_values.dart';
 import '../models/product_model.dart';
 import '../widgets/product_card.dart';

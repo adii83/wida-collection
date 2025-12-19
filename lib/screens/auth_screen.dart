@@ -6,6 +6,7 @@ import '../config/layout_values.dart';
 import '../controllers/auth_controller.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/rounded_icon_button.dart';
+import 'admin_login_screen.dart';
 
 enum AuthMode { login, signup }
 
@@ -43,9 +44,31 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _submit() async {
     if (!_auth.canUseSupabase) {
-      Get.snackbar(
-        'Supabase belum siap',
-        'Pastikan kredensial Supabase terisi di .env lalu restart aplikasi.',
+      Get.dialog(
+        AlertDialog(
+          title: const Text('Mode Offline'),
+          content: const Text(
+            'Supabase tidak tersedia. Anda dapat:\n\n'
+            '• Lewati login dan gunakan aplikasi tanpa sinkronisasi\n'
+            '• Masuk ke Admin Panel untuk mengelola produk',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Get.back(); // Close dialog
+                Get.offAll(() => const AdminLoginScreen());
+              },
+              child: const Text('Admin Panel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Get.back(); // Close dialog
+                Get.back(); // Back to previous screen (HomeScreen)
+              },
+              child: const Text('Skip & Lanjut'),
+            ),
+          ],
+        ),
       );
       return;
     }
