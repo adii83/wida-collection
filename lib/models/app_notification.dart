@@ -70,7 +70,7 @@ class AppNotification {
   }) {
     final normalized = Map<String, dynamic>.from(data);
     final type = NotificationType.from(normalized['type']?.toString());
-    final productId = (normalized['productId'] ?? normalized['product_id'])
+    final productIdRaw = (normalized['productId'] ?? normalized['product_id'])
         ?.toString();
     final title = normalized['title']?.toString() ?? 'Promo spesial';
     final body =
@@ -85,7 +85,7 @@ class AppNotification {
       title: title,
       body: body,
       type: type,
-      productId: productId?.isEmpty == true ? null : productId,
+      productId: (productIdRaw?.isEmpty ?? true) ? null : productIdRaw,
       receivedAt: DateTime.now(),
       data: normalized,
       origin: origin,
@@ -104,5 +104,55 @@ class AppNotification {
   static Map<String, dynamic> decodePayload(String? payload) {
     if (payload == null || payload.isEmpty) return <String, dynamic>{};
     return jsonDecode(payload) as Map<String, dynamic>;
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'body': body,
+    'type': type.name,
+    'productId': productId,
+    'receivedAt': receivedAt.toIso8601String(),
+    'origin': origin.name,
+    'data': data,
+  };
+
+  String toStorageString() => jsonEncode(toJson());
+
+  factory AppNotification.fromJson(Map<String, dynamic> json) {
+    final type = NotificationType.from(json['type']?.toString());
+    final originName = json['origin']?.toString();
+    final origin = NotificationOrigin.values.firstWhere(
+      (item) => item.name == originName,
+      orElse: () => NotificationOrigin.foreground,
+    );
+    final receivedAtRaw = json['receivedAt']?.toString();
+    final receivedAt = receivedAtRaw == null
+        ? DateTime.now()
+        : DateTime.tryParse(receivedAtRaw) ?? DateTime.now();
+    final rawData = json['data'];
+    final normalizedData = rawData is Map
+        ? rawData.map((key, value) => MapEntry(key.toString(), value))
+        : <String, dynamic>{};
+    final productIdRaw = json['productId']?.toString();
+    return AppNotification(
+      id:
+          json['id']?.toString() ??
+          DateTime.now().millisecondsSinceEpoch.toString(),
+      title: json['title']?.toString() ?? 'Promo spesial',
+      body:
+          json['body']?.toString() ??
+          'Cek detail promo terbaru di Wida Collection.',
+      type: type,
+      productId: (productIdRaw?.isEmpty ?? true) ? null : productIdRaw,
+      receivedAt: receivedAt,
+      data: normalizedData,
+      origin: origin,
+    );
+  }
+
+  factory AppNotification.fromStorageString(String raw) {
+    final jsonMap = jsonDecode(raw) as Map<String, dynamic>;
+    return AppNotification.fromJson(jsonMap);
   }
 }

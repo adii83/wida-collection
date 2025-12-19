@@ -54,6 +54,7 @@ class NotificationService extends GetxService {
   RemoteMessageCallback? _onRemoteMessage;
   PayloadCallback? _onPayloadTap;
   bool _localReady = false;
+  final List<_PendingTapPayload> _pendingTapPayloads = [];
 
   Future<NotificationService> init() async {
     await _ensureFirebase();
@@ -68,6 +69,7 @@ class NotificationService extends GetxService {
   }) {
     _onRemoteMessage = onRemoteMessage;
     _onPayloadTap = onPayloadTap;
+    _drainPendingTapPayloads();
   }
 
   Future<String?> fetchFcmToken() => FirebaseMessaging.instance.getToken();
@@ -137,16 +139,14 @@ class NotificationService extends GetxService {
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       debugPrint('FCM Payload (opened): ${jsonEncode(message.data)}');
       final payload = _buildPayload(message);
-      _onPayloadTap?.call(payload, NotificationOrigin.tap);
+      _enqueueTapPayload(payload, NotificationOrigin.tap);
     });
 
     final initialMessage = await messaging.getInitialMessage();
     if (initialMessage != null) {
       debugPrint('FCM Payload (initial): ${jsonEncode(initialMessage.data)}');
       final payload = _buildPayload(initialMessage);
-      Future.microtask(
-        () => _onPayloadTap?.call(payload, NotificationOrigin.tap),
-      );
+      _enqueueTapPayload(payload, NotificationOrigin.tap);
     }
   }
 
@@ -236,7 +236,27 @@ class NotificationService extends GetxService {
     if (response.payload == null) return;
     final payload = AppNotification.decodePayload(response.payload);
     if (payload.isEmpty) return;
-    _onPayloadTap?.call(payload, NotificationOrigin.tap);
+    _enqueueTapPayload(payload, NotificationOrigin.tap);
+  }
+
+  void _enqueueTapPayload(
+    Map<String, dynamic> payload,
+    NotificationOrigin origin,
+  ) {
+    if (_onPayloadTap != null) {
+      Future.microtask(() => _onPayloadTap?.call(payload, origin));
+    } else {
+      _pendingTapPayloads.add(_PendingTapPayload(payload, origin));
+    }
+  }
+
+  void _drainPendingTapPayloads() {
+    if (_onPayloadTap == null || _pendingTapPayloads.isEmpty) return;
+    final pending = List<_PendingTapPayload>.from(_pendingTapPayloads);
+    _pendingTapPayloads.clear();
+    for (final item in pending) {
+      _onPayloadTap?.call(item.payload, item.origin);
+    }
   }
 
   /// Entry point used by the background isolate to display local notifications.
@@ -284,6 +304,13 @@ class NotificationService extends GetxService {
       payload: jsonEncode(payload),
     );
   }
+}
+
+class _PendingTapPayload {
+  _PendingTapPayload(this.payload, this.origin);
+
+  final Map<String, dynamic> payload;
+  final NotificationOrigin origin;
 }
 
 @pragma('vm:entry-point')

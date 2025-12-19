@@ -8,12 +8,13 @@ import 'controllers/cloud_note_controller.dart';
 import 'controllers/theme_controller.dart';
 import 'controllers/wishlist_controller.dart';
 import 'controllers/cart_controller.dart';
-import 'controllers/notification_controller.dart';
 import 'screens/auth_gate.dart';
 import 'services/hive_service.dart';
 import 'services/preferences_service.dart';
 import 'services/supabase_service.dart';
+import 'controllers/notification_controller.dart';
 import 'services/notification_service.dart';
+import 'services/product_service.dart';
 import 'screens/notification_center_screen.dart';
 import 'routes/app_routes.dart';
 
@@ -44,6 +45,10 @@ Future<void> main() async {
     () async => NotificationService().init(),
     permanent: true,
   );
+  final productService = await Get.putAsync<ProductService>(
+    () async => ProductService().init(),
+    permanent: true,
+  );
 
   Get.put(ThemeController(preferences), permanent: true);
   final authController = Get.put(
@@ -62,7 +67,10 @@ Future<void> main() async {
     CloudNoteController(supabaseService, authController),
     permanent: true,
   );
-  Get.put(NotificationController(notificationService), permanent: true);
+  Get.put(
+    NotificationController(notificationService, productService),
+    permanent: true,
+  );
 
   runApp(const WindaCollectionApp());
 }

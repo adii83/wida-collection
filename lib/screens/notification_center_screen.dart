@@ -17,6 +17,15 @@ class NotificationCenterScreen extends GetView<NotificationController> {
       appBar: AppBar(
         title: const Text('Pusat Notifikasi'),
         actions: [
+          Obx(
+            () => IconButton(
+              onPressed: controller.notifications.isEmpty
+                  ? null
+                  : controller.clearAllNotifications,
+              icon: const Icon(Icons.delete_sweep),
+              tooltip: 'Bersihkan semua',
+            ),
+          ),
           IconButton(
             onPressed: controller.refreshFcmToken,
             icon: const Icon(Icons.refresh),

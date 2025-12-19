@@ -1,10 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../config/design_tokens.dart';
 import '../config/layout_values.dart';
 import '../controllers/theme_controller.dart';
-import '../data/dummy_products.dart';
 import '../widgets/animated_banner_explicit.dart';
 import '../widgets/animated_banner_implicit.dart';
 import '../widgets/benefit_tile.dart';
@@ -18,9 +19,10 @@ import 'notification_center_screen.dart';
 import 'product_detail_screen.dart';
 import 'profile_screen.dart';
 import 'search_screen.dart';
-import 'wishlist_screen.dart';
 import 'location_center_screen.dart';
 import '../routes/app_routes.dart';
+import '../services/product_service.dart';
+import 'wishlist_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -64,11 +66,12 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      _HomeLanding(onNavigateToTab: _handleTabChange),
-      const SearchScreen(),
-      const LocationCenterScreen(),
-      const CartScreen(),
+      _HomeLanding(onOpenSearch: () => Get.to(() => const SearchScreen())),
+      const WishlistScreen(),
+      const CloudNotesScreen(),
+      const NotificationCenterScreen(),
       const ProfileScreen(),
+      const LocationCenterScreen(),
     ];
 
     final theme = Theme.of(context);
@@ -79,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: IndexedStack(index: _currentIndex, children: pages),
       // Floating button (tombol Location)
       floatingActionButton: GestureDetector(
-        onTap: () => setState(() => _currentIndex = 2),
+        onTap: () => setState(() => _currentIndex = 5),
         child: Container(
           width: 70,
           height: 70,
@@ -110,11 +113,10 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _navItem(Icons.home_filled, "Home", 0),
-              _navItem(Icons.search, "Search", 1),
-
+              _navItem(Icons.favorite_border, "Wishlist", 1),
               const SizedBox(width: 30),
-
-              _navItem(Icons.shopping_bag, "Cart", 3),
+              _navItem(Icons.note_alt_outlined, "Catatan", 2),
+              _navItem(Icons.notifications_active_outlined, "Notif", 3),
               _navItem(Icons.person, "Profile", 4),
             ],
           ),
@@ -125,9 +127,9 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _HomeLanding extends StatelessWidget {
-  const _HomeLanding({required this.onNavigateToTab});
+  const _HomeLanding({required this.onOpenSearch});
 
-  final ValueChanged<int> onNavigateToTab;
+  final VoidCallback onOpenSearch;
 
   List<Map<String, dynamic>> get categories => [
     {
@@ -160,31 +162,10 @@ class _HomeLanding extends StatelessWidget {
     },
   ];
 
-  List<_FeatureShortcutData> get experiments => [
-    _FeatureShortcutData(
-      icon: Icons.favorite_border,
-      title: 'Wishlist & Restock',
-      description: 'Simpan produk favorit offline & sinkron Supabase.',
-      destinationBuilder: (_) => const WishlistScreen(),
-    ),
-    _FeatureShortcutData(
-      icon: Icons.cloud_outlined,
-      title: 'Catatan Cloud',
-      description: 'Sinkron otomatis via Supabase.',
-      destinationBuilder: (_) => const CloudNotesScreen(),
-    ),
-    _FeatureShortcutData(
-      icon: Icons.notifications_active,
-      title: 'Notification Lab',
-      description: 'Eksperimen lifecycle notifikasi modul 6.',
-      destinationBuilder: (_) => const NotificationCenterScreen(),
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final themeController = Get.find<ThemeController>();
-    final products = dummyProducts;
+    final productService = Get.find<ProductService>();
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final background = theme.scaffoldBackgroundColor;
@@ -238,22 +219,15 @@ class _HomeLanding extends StatelessWidget {
                         ),
                         const Spacer(),
                         RoundedIconButton(
-                          icon: Icons.favorite_border,
-                          onPressed: () => Get.to(() => const WishlistScreen()),
-                        ),
-                        AppSpacing.hItem,
-                        RoundedIconButton(
-                          icon: Icons.notifications_active_outlined,
-                          onPressed: () =>
-                              Get.toNamed(AppRoutes.notificationCenter),
-                        ),
-                        AppSpacing.hItem,
-                        RoundedIconButton(
                           icon: Icons.shopping_bag_outlined,
-                          onPressed: () => onNavigateToTab(3),
+                          onPressed: () => Get.to(() => const CartScreen()),
                         ),
+                        AppSpacing.hItem,
+                        _ThemeToggle(controller: themeController),
                       ],
                     ),
+                    AppSpacing.vSection,
+                    _SearchField(onTap: onOpenSearch),
                     AppSpacing.vSection,
                     const Chip(label: Text('Vintage Fashion')),
                     const SizedBox(height: 16),
@@ -270,11 +244,9 @@ class _HomeLanding extends StatelessWidget {
                     AppSpacing.vSection,
                     GradientButton(
                       label: 'Shop Now',
-                      onPressed: () => onNavigateToTab(1),
+                      onPressed: onOpenSearch,
                       expanded: false,
                     ),
-                    const SizedBox(height: 16),
-                    _SearchField(onTap: () => onNavigateToTab(1)),
                   ],
                 ),
               ),
@@ -332,26 +304,44 @@ class _HomeLanding extends StatelessWidget {
               const SizedBox(height: 16),
               Padding(
                 padding: AppSpacing.pagePadding,
-                child: GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: products.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 16,
-                    childAspectRatio: 0.72,
-                  ),
-                  itemBuilder: (context, index) {
-                    final product = products[index];
-                    return ProductCard(
-                      product: product,
-                      badge: index.isEven ? 'Excellent' : 'Very Good',
-                      onTap: () =>
-                          Get.to(() => ProductDetailScreen(product: product)),
+                child: Obx(() {
+                  final products = productService.products;
+                  if (productService.isLoading.value && products.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 32),
+                      child: Center(child: CircularProgressIndicator()),
                     );
-                  },
-                ),
+                  }
+                  if (products.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 32),
+                      child: Center(
+                        child: Text('Produk belum tersedia. Coba segarkan.'),
+                      ),
+                    );
+                  }
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: products.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 16,
+                          crossAxisSpacing: 16,
+                          childAspectRatio: 0.72,
+                        ),
+                    itemBuilder: (context, index) {
+                      final product = products[index];
+                      return ProductCard(
+                        product: product,
+                        badge: index.isEven ? 'Excellent' : 'Very Good',
+                        onTap: () =>
+                            Get.to(() => ProductDetailScreen(product: product)),
+                      );
+                    },
+                  );
+                }),
               ),
               AppSpacing.vSection,
               Container(
@@ -398,31 +388,7 @@ class _HomeLanding extends StatelessWidget {
                 ),
               ),
               AppSpacing.vSection,
-              Padding(
-                padding: AppSpacing.pagePadding,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _SectionHeader(
-                      title: 'Eksperimen Pembelajaran',
-                      subtitle: 'Akses cepat fitur tugas modul',
-                    ),
-                    const SizedBox(height: 16),
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemBuilder: (context, index) {
-                        final item = experiments[index];
-                        return _ExperimentTile(data: item);
-                      },
-                      separatorBuilder: (_, __) => AppSpacing.vItem,
-                      itemCount: experiments.length,
-                    ),
-                    AppSpacing.vSection,
-                  ],
-                ),
-              ),
-              _Footer(themeController: themeController),
+              const _Footer(),
             ],
           ),
         ),
@@ -454,118 +420,240 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _SearchField extends StatelessWidget {
+class _SearchField extends StatefulWidget {
   const _SearchField({required this.onTap});
 
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            decoration: const InputDecoration(
-              hintText: 'Cari baju impianmu...',
-              prefixIcon: Icon(Icons.search),
-            ),
-            onTap: onTap,
-          ),
-        ),
-        AppSpacing.hItem,
-        RoundedIconButton(
-          icon: Icons.tune,
-          onPressed: () =>
-              Get.snackbar('Filter', 'Fitur filter akan segera hadir'),
-        ),
-      ],
-    );
-  }
+  State<_SearchField> createState() => _SearchFieldState();
 }
 
-class _ExperimentTile extends StatelessWidget {
-  const _ExperimentTile({required this.data});
+class _SearchFieldState extends State<_SearchField> {
+  static const _prompts = [
+    'Cari Pakaian Wanita',
+    'Cari Pakaian Pria',
+    'Dress Vintage Favorit',
+    'Jaket Denim Terbaru',
+    'Sweater Hangat',
+    'Celana Jeans Classic',
+    'Aksesoris Retro',
+    'Sepatu Santai',
+  ];
 
-  final _FeatureShortcutData data;
+  late int _currentPrompt;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentPrompt = 0;
+    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+      setState(() {
+        _currentPrompt = (_currentPrompt + 1) % _prompts.length;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: () => Get.to(() => data.destinationBuilder(context)),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: theme.brightness == Brightness.dark
-                ? null
-                : AppShadows.card,
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.brightness == Brightness.dark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : AppColors.lavender,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Icon(data.icon, color: AppColors.primaryPink),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      data.title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      data.description,
-                      style: const TextStyle(color: AppColors.softGray),
-                    ),
-                  ],
+    final bgColor = theme.colorScheme.surface;
+    final borderColor = AppColors.primaryPink.withOpacity(0.2);
+
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: borderColor),
+          boxShadow: theme.brightness == Brightness.dark
+              ? null
+              : [
+                  BoxShadow(
+                    color: AppColors.primaryPink.withOpacity(0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.search, color: AppColors.primaryPink),
+            const SizedBox(width: 12),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 350),
+                transitionBuilder: (child, animation) =>
+                    FadeTransition(opacity: animation, child: child),
+                child: Text(
+                  _prompts[_currentPrompt],
+                  key: ValueKey(_currentPrompt),
+                  style: const TextStyle(
+                    color: AppColors.primaryPink,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              const Icon(
-                Icons.arrow_forward_ios,
-                size: 18,
-                color: AppColors.softGray,
-              ),
-            ],
-          ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: AppColors.softGray,
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _FeatureShortcutData {
-  const _FeatureShortcutData({
-    required this.icon,
-    required this.title,
-    required this.description,
-    required this.destinationBuilder,
-  });
+class _ThemeToggle extends StatelessWidget {
+  const _ThemeToggle({required this.controller});
 
-  final IconData icon;
-  final String title;
-  final String description;
-  final WidgetBuilder destinationBuilder;
+  final ThemeController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final isLight = controller.themeMode.value == ThemeMode.light;
+      return GestureDetector(
+        onTap: () =>
+            controller.setThemeMode(isLight ? ThemeMode.dark : ThemeMode.light),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          width: 64,
+          height: 32,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: isLight
+                ? const LinearGradient(
+                    colors: [Color(0xFFFFE4F2), Color(0xFFFFB5D9)],
+                  )
+                : const LinearGradient(
+                    colors: [Color(0xFF2D2D2D), Color(0xFF121212)],
+                  ),
+            boxShadow: [
+              if (isLight)
+                BoxShadow(
+                  color: AppColors.primaryPink.withOpacity(0.25),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Align(
+                alignment: isLight
+                    ? Alignment.centerLeft
+                    : Alignment.centerRight,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.12),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    isLight ? Icons.wb_sunny_outlined : Icons.nightlight_round,
+                    size: 16,
+                    color: isLight
+                        ? AppColors.primaryPink
+                        : Colors.deepPurpleAccent,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
 }
 
-class _PromoBannerSection extends StatelessWidget {
+class _PromoBannerSection extends StatefulWidget {
   const _PromoBannerSection();
+
+  @override
+  State<_PromoBannerSection> createState() => _PromoBannerSectionState();
+}
+
+class _PromoBannerSectionState extends State<_PromoBannerSection> {
+  late final PageController _pageController;
+  int _currentPage = 0;
+  late final List<double> _collapsedHeights;
+  late final List<double> _bannerHeights;
+
+  @override
+  void initState() {
+    super.initState();
+    _collapsedHeights = const [
+      AnimatedBannerImplicit.collapsedHeight,
+      AnimatedBannerExplicit.collapsedHeight,
+    ];
+    _bannerHeights = List<double>.from(_collapsedHeights);
+    _pageController = PageController(viewportFraction: 0.92);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  int get _bannerCount => _collapsedHeights.length;
+
+  double get _currentBannerHeight => _bannerHeights[_currentPage];
+
+  double get _currentCollapsedHeight => _collapsedHeights[_currentPage];
+
+  double get _indicatorOffset {
+    final difference = _currentBannerHeight - _currentCollapsedHeight;
+    return difference > 0 ? difference : 0;
+  }
+
+  double get _indicatorMarginTop => 6 + _indicatorOffset;
+
+  void _handleBannerHeightChange(int index, double height) {
+    if (_bannerHeights[index] == height) return;
+    _bannerHeights[index] = height;
+    if (index == _currentPage && mounted) {
+      setState(() {});
+    }
+  }
+
+  Widget _buildBanner(int index) {
+    switch (index) {
+      case 0:
+        return AnimatedBannerImplicit(
+          onHeightChanged: (height) => _handleBannerHeightChange(index, height),
+        );
+      case 1:
+      default:
+        return AnimatedBannerExplicit(
+          onHeightChanged: (height) => _handleBannerHeightChange(index, height),
+        );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -575,24 +663,61 @@ class _PromoBannerSection extends StatelessWidget {
         AppSpacing.vSection,
         Padding(
           padding: AppSpacing.pagePadding,
-          child: _SectionHeader(
-            title: 'Promo Interaktif',
-            subtitle: 'Sentuh banner untuk animasi halus',
+          child: const _SectionHeader(
+            title: 'Hot Promo',
+            subtitle: 'Temukan Promo Terbaik Hari Ini',
           ),
         ),
-        const SizedBox(height: 12),
-        const AnimatedBannerImplicit(),
-        AppSpacing.vItem,
-        const AnimatedBannerExplicit(),
+        const SizedBox(height: 16),
+        Padding(
+          padding: AppSpacing.pagePadding,
+          child: SizedBox(
+            height: AnimatedBannerExplicit.expandedHeight,
+            child: PageView.builder(
+              controller: _pageController,
+              physics: const BouncingScrollPhysics(),
+              padEnds: false,
+              itemCount: _bannerCount,
+              onPageChanged: (index) => setState(() => _currentPage = index),
+              itemBuilder: (context, index) => Padding(
+                padding: EdgeInsets.only(
+                  right: index == _bannerCount - 1 ? 0 : 12,
+                ),
+                child: _buildBanner(index),
+              ),
+            ),
+          ),
+        ),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+          margin: EdgeInsets.only(top: _indicatorMarginTop),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              _bannerCount,
+              (index) => AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                height: 6,
+                width: _currentPage == index ? 24 : 8,
+                decoration: BoxDecoration(
+                  color: _currentPage == index
+                      ? AppColors.primaryPink
+                      : AppColors.primaryPink.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
 }
 
 class _Footer extends StatelessWidget {
-  const _Footer({required this.themeController});
-
-  final ThemeController themeController;
+  const _Footer();
 
   @override
   Widget build(BuildContext context) {
@@ -630,32 +755,6 @@ class _Footer extends StatelessWidget {
           ),
           const Text('@widhathrift', style: TextStyle(color: Colors.white)),
           const SizedBox(height: 16),
-          Obx(
-            () => Row(
-              children: [
-                IconButton(
-                  onPressed: () =>
-                      themeController.setThemeMode(ThemeMode.light),
-                  icon: Icon(
-                    Icons.light_mode,
-                    color: themeController.themeMode.value == ThemeMode.light
-                        ? AppColors.primaryPink
-                        : Colors.white54,
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => themeController.setThemeMode(ThemeMode.dark),
-                  icon: Icon(
-                    Icons.dark_mode,
-                    color: themeController.themeMode.value == ThemeMode.dark
-                        ? AppColors.primaryPink
-                        : Colors.white54,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          AppSpacing.vItem,
           const Text(
             '© 2025 Wida Collection. All rights reserved.',
             style: TextStyle(color: Colors.white54),

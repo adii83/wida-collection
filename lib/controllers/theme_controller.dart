@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../services/preferences_service.dart';
@@ -9,6 +11,7 @@ class ThemeController extends GetxController {
 
   final themeMode = ThemeMode.light.obs;
   final seedColor = const Color(0xFFE91E63).obs;
+  Timer? _themePersistTimer;
 
   final List<Color> availableSeeds = const [
     Color(0xFFE91E63), // pink
@@ -31,11 +34,16 @@ class ThemeController extends GetxController {
   }
 
   void setThemeMode(ThemeMode mode) {
+    if (themeMode.value == mode) return;
     themeMode.value = mode;
-    final sw = Stopwatch()..start();
-    _preferencesService.saveThemeMode(mode).whenComplete(() {
-      sw.stop();
-      debugPrint('Prefs write (theme): ${sw.elapsedMilliseconds} ms');
+
+    _themePersistTimer?.cancel();
+    _themePersistTimer = Timer(const Duration(milliseconds: 350), () {
+      final sw = Stopwatch()..start();
+      _preferencesService.saveThemeMode(mode).whenComplete(() {
+        sw.stop();
+        debugPrint('Prefs write (theme): ${sw.elapsedMilliseconds} ms');
+      });
     });
   }
 
@@ -49,4 +57,10 @@ class ThemeController extends GetxController {
   }
 
   bool isSelected(Color color) => seedColor.value == color;
+
+  @override
+  void onClose() {
+    _themePersistTimer?.cancel();
+    super.onClose();
+  }
 }
