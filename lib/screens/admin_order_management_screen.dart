@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/order_controller.dart';
 import '../models/order_model.dart';
+import 'admin_order_detail_screen.dart';
 
 class AdminOrderManagementScreen extends StatefulWidget {
   const AdminOrderManagementScreen({super.key});
@@ -21,201 +22,6 @@ class _AdminOrderManagementScreenState
       Get.put(OrderController(Get.find()));
     }
     Get.find<OrderController>().fetchOrders();
-  }
-
-  void _showOrderDetailDialog(OrderModel order) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Order #${order.id.substring(0, 8)}'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildInfoRow('Customer', order.userName),
-              _buildInfoRow('Email', order.userEmail),
-              _buildInfoRow(
-                'Total',
-                'Rp ${order.totalAmount.toStringAsFixed(0)}',
-              ),
-              _buildInfoRow('Status', order.status),
-              _buildInfoRow('Payment', order.paymentStatus),
-              _buildInfoRow('Method', order.paymentMethod),
-              if (order.trackingNumber != null)
-                _buildInfoRow('Tracking', order.trackingNumber!),
-              const Divider(),
-              const Text(
-                'Items:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              ...order.items.map(
-                (item) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Text('• ${item.productName} x${item.quantity}'),
-                ),
-              ),
-              const Divider(),
-              _buildInfoRow('Address', order.shippingAddress),
-              if (order.notes != null) _buildInfoRow('Notes', order.notes!),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Tutup'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showUpdateStatusDialog(order);
-            },
-            child: const Text('Update Status'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              '$label:',
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-
-  void _showUpdateStatusDialog(OrderModel order) {
-    final trackingController = TextEditingController(
-      text: order.trackingNumber,
-    );
-    final notesController = TextEditingController(text: order.notes);
-    String selectedStatus = order.status;
-    String selectedPaymentStatus = order.paymentStatus;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Update Order Status'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<String>(
-                  value: selectedStatus,
-                  decoration: const InputDecoration(
-                    labelText: 'Status Order',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'pending', child: Text('Dikemas')),
-                    DropdownMenuItem(
-                      value: 'processing',
-                      child: Text('Dikirim'),
-                    ),
-                    DropdownMenuItem(value: 'shipped', child: Text('Diterima')),
-                    DropdownMenuItem(
-                      value: 'delivered',
-                      child: Text('Delivered'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'cancelled',
-                      child: Text('Cancelled'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    setDialogState(() => selectedStatus = value!);
-                  },
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: selectedPaymentStatus,
-                  decoration: const InputDecoration(
-                    labelText: 'Status Pembayaran',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'pending', child: Text('Pending')),
-                    DropdownMenuItem(value: 'paid', child: Text('Paid')),
-                    DropdownMenuItem(value: 'failed', child: Text('Failed')),
-                    DropdownMenuItem(
-                      value: 'refunded',
-                      child: Text('Refunded'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    setDialogState(() => selectedPaymentStatus = value!);
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: trackingController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nomor Resi (opsional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: notesController,
-                  decoration: const InputDecoration(
-                    labelText: 'Catatan (opsional)',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 2,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                final controller = Get.find<OrderController>();
-
-                // Update order status
-                await controller.updateOrderStatus(
-                  order.id,
-                  selectedStatus,
-                  trackingNumber: trackingController.text.isNotEmpty
-                      ? trackingController.text
-                      : null,
-                  notes: notesController.text.isNotEmpty
-                      ? notesController.text
-                      : null,
-                );
-
-                // Update payment status if changed
-                if (selectedPaymentStatus != order.paymentStatus) {
-                  await controller.updatePaymentStatus(
-                    order.id,
-                    selectedPaymentStatus,
-                  );
-                }
-              },
-              child: const Text('Simpan'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -238,8 +44,6 @@ class _AdminOrderManagementScreenState
                     _buildFilterChip(controller, 'pending', 'Dikemas'),
                     _buildFilterChip(controller, 'processing', 'Dikirim'),
                     _buildFilterChip(controller, 'shipped', 'Diterima'),
-                    _buildFilterChip(controller, 'delivered', 'Delivered'),
-                    _buildFilterChip(controller, 'cancelled', 'Cancelled'),
                   ],
                 ),
               ),
@@ -258,67 +62,136 @@ class _AdminOrderManagementScreenState
 
               return RefreshIndicator(
                 onRefresh: () => controller.fetchOrders(),
-                child: ListView.builder(
+                child: GridView.builder(
                   padding: const EdgeInsets.all(16),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 0.85,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                  ),
                   itemCount: orders.length,
                   itemBuilder: (context, index) {
                     final order = orders[index];
                     return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       child: InkWell(
-                        onTap: () => _showOrderDetailDialog(order),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Order #${order.id.substring(0, 8)}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
+                        onTap: () => Get.to(
+                          () => AdminOrderDetailScreen(order: order),
+                          transition: Transition.rightToLeft,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Header dengan status
+                            Stack(
+                              children: [
+                                Container(
+                                  height: 100,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: _getStatusColor(order.status),
+                                    borderRadius: const BorderRadius.only(
+                                      topLeft: Radius.circular(12),
+                                      topRight: Radius.circular(12),
                                     ),
                                   ),
-                                  _buildStatusChip(order.status),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text('Customer: ${order.userName}'),
-                              Text(
-                                'Total: Rp ${order.totalAmount.toStringAsFixed(0)}',
-                                style: const TextStyle(
-                                  color: Colors.green,
-                                  fontWeight: FontWeight.bold,
+                                  child: Center(
+                                    child: Text(
+                                      'Order #${order.id.substring(0, 6)}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Icon(
-                                    _getPaymentIcon(order.paymentStatus),
-                                    size: 16,
-                                    color: _getPaymentColor(
-                                      order.paymentStatus,
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
                                     ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    order.paymentStatus.toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: _getPaymentColor(
-                                        order.paymentStatus,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      _getStatusLabel(order.status),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
                                       ),
                                     ),
                                   ),
+                                ),
+                              ],
+                            ),
+                            // Content
+                            Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    order.userName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Rp ${order.totalAmount.toStringAsFixed(0)}',
+                                    style: const TextStyle(
+                                      color: Colors.green,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        _getPaymentIcon(order.paymentStatus),
+                                        size: 14,
+                                        color: _getPaymentColor(
+                                          order.paymentStatus,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          order.paymentStatus.toUpperCase(),
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: _getPaymentColor(
+                                              order.paymentStatus,
+                                            ),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -330,6 +203,19 @@ class _AdminOrderManagementScreenState
         ],
       ),
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'pending':
+        return Colors.orange.shade100;
+      case 'processing':
+        return Colors.blue.shade100;
+      case 'shipped':
+        return Colors.purple.shade100;
+      default:
+        return Colors.grey.shade100;
+    }
   }
 
   Widget _buildFilterChip(
@@ -360,52 +246,9 @@ class _AdminOrderManagementScreenState
         return 'Dikirim';
       case 'shipped':
         return 'Diterima';
-      case 'delivered':
-        return 'Delivered';
-      case 'cancelled':
-        return 'Cancelled';
       default:
         return status.toUpperCase();
     }
-  }
-
-  Widget _buildStatusChip(String status) {
-    Color color;
-    switch (status) {
-      case 'pending':
-        color = Colors.orange;
-        break;
-      case 'processing':
-        color = Colors.blue;
-        break;
-      case 'shipped':
-        color = Colors.purple;
-        break;
-      case 'delivered':
-        color = Colors.green;
-        break;
-      case 'cancelled':
-        color = Colors.red;
-        break;
-      default:
-        color = Colors.grey;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        _getStatusLabel(status),
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
   }
 
   IconData _getPaymentIcon(String status) {

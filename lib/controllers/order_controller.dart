@@ -2,6 +2,8 @@ import 'package:get/get.dart';
 import '../models/order_model.dart';
 import '../models/refund_model.dart';
 import '../services/admin_service.dart';
+import '../data/dummy_orders.dart';
+import '../data/dummy_refunds.dart';
 import 'admin_controller.dart';
 
 class OrderController extends GetxController {
@@ -31,7 +33,15 @@ class OrderController extends GetxController {
     try {
       isLoading.value = true;
       final data = await _adminService.fetchAllOrders();
-      orders.assignAll(data);
+      if (data.isNotEmpty) {
+        orders.assignAll(data);
+      } else {
+        // Use dummy data if API returns empty
+        orders.assignAll(dummyOrders);
+      }
+    } catch (e) {
+      // Use dummy data if API fails
+      orders.assignAll(dummyOrders);
     } finally {
       isLoading.value = false;
     }
@@ -41,7 +51,15 @@ class OrderController extends GetxController {
     try {
       isLoading.value = true;
       final data = await _adminService.fetchAllRefunds();
-      refunds.assignAll(data);
+      if (data.isNotEmpty) {
+        refunds.assignAll(data);
+      } else {
+        // Use dummy data if API returns empty
+        refunds.assignAll(dummyRefunds);
+      }
+    } catch (e) {
+      // Use dummy data if API fails
+      refunds.assignAll(dummyRefunds);
     } finally {
       isLoading.value = false;
     }

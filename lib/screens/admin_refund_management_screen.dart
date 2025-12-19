@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/order_controller.dart';
 import '../models/refund_model.dart';
+import 'admin_refund_detail_screen.dart';
 
 class AdminRefundManagementScreen extends StatefulWidget {
   const AdminRefundManagementScreen({super.key});
@@ -13,6 +14,8 @@ class AdminRefundManagementScreen extends StatefulWidget {
 
 class _AdminRefundManagementScreenState
     extends State<AdminRefundManagementScreen> {
+  String selectedFilter = 'all';
+
   @override
   void initState() {
     super.initState();
@@ -22,137 +25,9 @@ class _AdminRefundManagementScreenState
     Get.find<OrderController>().fetchRefunds();
   }
 
-  void _showRefundDetailDialog(RefundModel refund) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Refund #${refund.id.substring(0, 8)}'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildInfoRow('Customer', refund.userName),
-              _buildInfoRow('Order ID', refund.orderId.substring(0, 8)),
-              _buildInfoRow(
-                'Amount',
-                'Rp ${refund.refundAmount.toStringAsFixed(0)}',
-              ),
-              _buildInfoRow('Status', refund.status.toUpperCase()),
-              const Divider(),
-              const Text(
-                'Alasan:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              Text(refund.reason),
-              if (refund.adminNotes != null) ...[
-                const Divider(),
-                const Text(
-                  'Catatan Admin:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text(refund.adminNotes!),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Tutup'),
-          ),
-          if (refund.status == 'pending') ...[
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _showProcessRefundDialog(refund, 'rejected');
-              },
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Tolak'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _showProcessRefundDialog(refund, 'approved');
-              },
-              child: const Text('Setujui'),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              '$label:',
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-
-  void _showProcessRefundDialog(RefundModel refund, String action) {
-    final notesController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(action == 'approved' ? 'Setujui Refund' : 'Tolak Refund'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Yakin ingin ${action == 'approved' ? 'menyetujui' : 'menolak'} refund sebesar Rp ${refund.refundAmount.toStringAsFixed(0)}?',
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: notesController,
-              decoration: const InputDecoration(
-                labelText: 'Catatan Admin (opsional)',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              final controller = Get.find<OrderController>();
-              await controller.processRefund(
-                refund.id,
-                action,
-                adminNotes: notesController.text.isNotEmpty
-                    ? notesController.text
-                    : null,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: action == 'approved' ? Colors.green : Colors.red,
-            ),
-            child: Text(action == 'approved' ? 'Setujui' : 'Tolak'),
-          ),
-        ],
-      ),
-    );
+  List<RefundModel> _getFilteredRefunds(List<RefundModel> refunds) {
+    if (selectedFilter == 'all') return refunds;
+    return refunds.where((r) => r.status == selectedFilter).toList();
   }
 
   @override
@@ -160,149 +35,257 @@ class _AdminRefundManagementScreenState
     final controller = Get.find<OrderController>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Kelola Refund')),
-      body: Obx(() {
-        if (controller.isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final refunds = controller.refunds;
-        if (refunds.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.money_off, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text('Tidak ada permintaan refund'),
-              ],
+      appBar: AppBar(title: const Text('Kelola Refund'), elevation: 0),
+      body: Column(
+        children: [
+          // Filter tabs
+          Container(
+            padding: const EdgeInsets.all(8),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildFilterChip('all', 'Semua'),
+                  _buildFilterChip('pending', 'Pending'),
+                  _buildFilterChip('approved', 'Disetujui'),
+                  _buildFilterChip('rejected', 'Ditolak'),
+                  _buildFilterChip('processed', 'Selesai'),
+                ],
+              ),
             ),
-          );
-        }
+          ),
+          Expanded(
+            child: Obx(() {
+              if (controller.isLoading.value) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-        return RefreshIndicator(
-          onRefresh: () => controller.fetchRefunds(),
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: refunds.length,
-            itemBuilder: (context, index) {
-              final refund = refunds[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: InkWell(
-                  onTap: () => _showRefundDetailDialog(refund),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Refund #${refund.id.substring(0, 8)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            _buildStatusChip(refund.status),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text('Customer: ${refund.userName}'),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Rp ${refund.refundAmount.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          refund.reason,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.calendar_today,
-                              size: 14,
-                              color: Colors.grey[600],
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              _formatDate(refund.requestedAt),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+              final filteredRefunds = _getFilteredRefunds(controller.refunds);
+              if (filteredRefunds.isEmpty) {
+                return const Center(child: Text('Tidak ada refund'));
+              }
+
+              return RefreshIndicator(
+                onRefresh: () => controller.fetchRefunds(),
+                child: GridView.builder(
+                  padding: const EdgeInsets.all(16),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 0.75,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
                   ),
+                  itemCount: filteredRefunds.length,
+                  itemBuilder: (context, index) {
+                    final refund = filteredRefunds[index];
+                    return Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: InkWell(
+                        onTap: () => Get.to(
+                          () => AdminRefundDetailScreen(refund: refund),
+                          transition: Transition.rightToLeft,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Header dengan status
+                            Stack(
+                              children: [
+                                Container(
+                                  height: 100,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: _getStatusColor(refund.status),
+                                    borderRadius: const BorderRadius.only(
+                                      topLeft: Radius.circular(12),
+                                      topRight: Radius.circular(12),
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          'Refund #${refund.id.substring(3)}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Order #${refund.orderId.substring(3)}',
+                                          style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      _getStatusLabel(refund.status),
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // Content
+                            Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    refund.userName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Rp ${refund.refundAmount.toStringAsFixed(0)}',
+                                    style: const TextStyle(
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    refund.reason,
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.access_time,
+                                        size: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          _getTimeAgo(refund.requestedAt),
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.grey[600],
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
               );
-            },
+            }),
           ),
-        );
-      }),
+        ],
+      ),
     );
   }
 
-  Widget _buildStatusChip(String status) {
-    Color color;
-    String label;
+  Widget _buildFilterChip(String filter, String label) {
+    final isSelected = selectedFilter == filter;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: FilterChip(
+        label: Text(label),
+        selected: isSelected,
+        onSelected: (selected) {
+          if (selected) {
+            setState(() => selectedFilter = filter);
+          }
+        },
+      ),
+    );
+  }
+
+  Color _getStatusColor(String status) {
     switch (status) {
       case 'pending':
-        color = Colors.orange;
-        label = 'PENDING';
-        break;
+        return Colors.orange.shade400;
       case 'approved':
-        color = Colors.green;
-        label = 'DISETUJUI';
-        break;
+        return Colors.blue.shade400;
       case 'rejected':
-        color = Colors.red;
-        label = 'DITOLAK';
-        break;
+        return Colors.red.shade400;
       case 'processed':
-        color = Colors.blue;
-        label = 'DIPROSES';
-        break;
+        return Colors.green.shade400;
       default:
-        color = Colors.grey;
-        label = status.toUpperCase();
+        return Colors.grey.shade400;
     }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+  String _getStatusLabel(String status) {
+    switch (status) {
+      case 'pending':
+        return 'Pending';
+      case 'approved':
+        return 'Disetujui';
+      case 'rejected':
+        return 'Ditolak';
+      case 'processed':
+        return 'Selesai';
+      default:
+        return status.toUpperCase();
+    }
+  }
+
+  String _getTimeAgo(DateTime dateTime) {
+    final difference = DateTime.now().difference(dateTime);
+    if (difference.inDays > 0) {
+      return '${difference.inDays} hari lalu';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} jam lalu';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} menit lalu';
+    } else {
+      return 'Baru saja';
+    }
   }
 }

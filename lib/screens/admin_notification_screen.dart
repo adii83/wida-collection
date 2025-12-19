@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/admin_controller.dart';
+import 'admin_select_users_screen.dart';
 
 class AdminNotificationScreen extends StatefulWidget {
   const AdminNotificationScreen({super.key});
@@ -15,6 +16,7 @@ class _AdminNotificationScreenState extends State<AdminNotificationScreen> {
   final _bodyController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   String _targetType = 'all'; // all, specific
+  List<String> _selectedUserIds = []; // Selected user IDs
 
   @override
   void dispose() {
@@ -26,16 +28,31 @@ class _AdminNotificationScreenState extends State<AdminNotificationScreen> {
   Future<void> _sendNotification() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Validate user selection if target is specific
+    if (_targetType == 'specific' && _selectedUserIds.isEmpty) {
+      Get.snackbar(
+        'Error',
+        'Pilih minimal 1 user untuk notifikasi tertentu',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
     final controller = Get.find<AdminController>();
     final success = await controller.sendNotification(
       title: _titleController.text,
       body: _bodyController.text,
-      targetUserId: _targetType == 'all' ? null : 'user_id_here',
+      targetUserId: _targetType == 'all' ? null : _selectedUserIds.join(','),
     );
 
     if (success) {
       _titleController.clear();
       _bodyController.clear();
+      setState(() {
+        _selectedUserIds.clear();
+        _targetType = 'all';
+      });
     }
   }
 
@@ -110,9 +127,100 @@ class _AdminNotificationScreenState extends State<AdminNotificationScreen> {
                 onSelectionChanged: (Set<String> newSelection) {
                   setState(() {
                     _targetType = newSelection.first;
+                    if (_targetType == 'all') {
+                      _selectedUserIds.clear();
+                    }
                   });
                 },
               ),
+
+              // Show selected users if specific target is selected
+              if (_targetType == 'specific') ...[
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'User Terpilih (${_selectedUserIds.length})',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        final result = await Get.to(
+                          () => const AdminSelectUsersScreen(),
+                          transition: Transition.rightToLeft,
+                        );
+                        if (result != null && result is List<String>) {
+                          setState(() {
+                            _selectedUserIds = result;
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Pilih User'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (_selectedUserIds.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Colors.grey[600]),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Belum ada user terpilih. Klik tombol "Pilih User" untuk memilih.',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.blue[300]!),
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.blue[50],
+                    ),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _selectedUserIds.map((userId) {
+                        return Chip(
+                          label: Text(
+                            'User #${userId.substring(0, 6)}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          deleteIcon: const Icon(Icons.close, size: 16),
+                          onDeleted: () {
+                            setState(() {
+                              _selectedUserIds.remove(userId);
+                            });
+                          },
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                        );
+                      }).toList(),
+                    ),
+                  ),
+              ],
               const SizedBox(height: 24),
               Text(
                 'Konten Notifikasi',
