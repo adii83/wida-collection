@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import '../models/admin_user.dart';
 import '../models/product_model.dart';
 import '../services/admin_service.dart';
+import '../services/supabase_service.dart';
 
 class AdminController extends GetxController {
   AdminController(this._adminService);
@@ -15,6 +16,25 @@ class AdminController extends GetxController {
   bool get isLoggedIn => currentAdmin.value != null;
   bool get canManageProducts => currentAdmin.value?.canManageProducts ?? false;
   bool get isSuperAdmin => currentAdmin.value?.isSuperAdmin ?? false;
+
+  @override
+  void onInit() {
+    super.onInit();
+    _syncFromSession();
+
+    // Keep in sync if sign-in/out happens elsewhere (e.g. AuthScreen/AuthController)
+    if (Get.isRegistered<SupabaseService>()) {
+      final supabase = Get.find<SupabaseService>();
+      supabase.authStateChanges.listen((_) {
+        _syncFromSession();
+      });
+    }
+  }
+
+  Future<void> _syncFromSession() async {
+    final admin = await _adminService.getCurrentAdmin();
+    currentAdmin.value = admin;
+  }
 
   Future<bool> login(String email, String password) async {
     try {
@@ -54,6 +74,7 @@ class AdminController extends GetxController {
 
   void logout() {
     currentAdmin.value = null;
+    _adminService.adminLogout();
     Get.snackbar(
       'Logout',
       'Anda telah keluar dari admin panel',

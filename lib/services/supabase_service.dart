@@ -2,12 +2,14 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../config/supabase_config.dart';
 import '../models/note_model.dart';
 import '../models/wishlist_item.dart';
 import '../models/cart_item_model.dart';
 import '../models/user_profile.dart';
 import '../models/user_address.dart';
+import '../models/order_model.dart';
 
 class SupabaseService extends GetxService {
   SupabaseClient? _client;
@@ -18,6 +20,13 @@ class SupabaseService extends GetxService {
 
   SupabaseClient? get client => _client;
   bool get isReady => _initialized && _client != null;
+
+  Stream<AuthState> get authStateChanges {
+    if (!isReady) {
+      return const Stream<AuthState>.empty();
+    }
+    return _client!.auth.onAuthStateChange;
+  }
 
   /// Convenience getter for current authenticated user's id (nullable)
   String? get currentUserId => _client?.auth.currentUser?.id;
@@ -352,5 +361,64 @@ class SupabaseService extends GetxService {
         .update({'is_default': true})
         .eq('id', id)
         .eq('owner', owner);
+  }
+
+  // Orders (orders table)
+  Future<OrderModel?> createOrder(OrderModel order) async {
+    if (!isReady) return null;
+    final client = _client!;
+    final payload = Map<String, dynamic>.from(order.toJson());
+
+    // Your Supabase schema uses `owner` as UUID FK -> auth.users.
+    // Ensure we always send a non-null UUID for `owner`.
+    payload['owner'] ??= currentUserId;
+
+    // Some schemas require a NOT NULL `invoice` column.
+    // Use a UUID string which works for both TEXT and UUID column types.
+    payload['invoice'] ??= const Uuid().v4();
+
+    // If the database column `orders.id` is UUID, ensure we send a UUID.
+    // Sending a UUID string is also compatible with TEXT ids.
+    final id = payload['id'];
+    if (id is String) {
+      final uuidRegex = RegExp(
+        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+      );
+      if (!uuidRegex.hasMatch(id)) {
+        payload['id'] = const Uuid().v4();
+      }
+    }
+
+    try {
+      final inserted = await client
+          .from('orders')
+          .insert(payload)
+          .select()
+          .single();
+      return OrderModel.fromJson(
+        Map<String, dynamic>.from(inserted as Map<dynamic, dynamic>),
+      );
+    } on PostgrestException catch (e) {
+      // Common mismatch: database uses UUID for orders.id, but app sends 'ORDxxxxxx'
+      final looksLikeUuidIdIssue =
+          e.code == '22P02' &&
+          ((e.message.toLowerCase().contains('uuid')) ||
+              (e.details?.toString().toLowerCase().contains('uuid') ?? false));
+
+      if (looksLikeUuidIdIssue) {
+        // If DB expects UUID for `orders.id`, replace any non-UUID id with a UUID.
+        final retryPayload = Map<String, dynamic>.from(payload);
+        retryPayload['id'] = const Uuid().v4();
+        final inserted = await client
+            .from('orders')
+            .insert(retryPayload)
+            .select()
+            .single();
+        return OrderModel.fromJson(
+          Map<String, dynamic>.from(inserted as Map<dynamic, dynamic>),
+        );
+      }
+      rethrow;
+    }
   }
 }

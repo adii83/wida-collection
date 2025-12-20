@@ -1,14 +1,14 @@
-import 'dart:convert';
-
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/dummy_products.dart';
 import '../models/product_model.dart';
+import 'supabase_service.dart';
 
 class ProductService extends GetxService {
-  static const _endpoint =
-      'https://api.escuelajs.co/api/v1/products?offset=0&limit=40';
+  ProductService(this._supabaseService);
+
+  final SupabaseService _supabaseService;
 
   final products = <Product>[].obs;
   final isLoading = false.obs;
@@ -50,35 +50,49 @@ class ProductService extends GetxService {
     isLoading.value = true;
     lastError.value = null;
     try {
-      final uri = Uri.parse(_endpoint);
-      final response = await http.get(uri);
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final decoded = jsonDecode(response.body);
-        if (decoded is List) {
-          final parsed = decoded
-              .map<Product?>((item) {
-                if (item is Map<String, dynamic>) {
-                  return Product.fromJson(item);
-                }
-                return null;
-              })
-              .whereType<Product>()
-              .where((product) => product.id.isNotEmpty)
-              .toList();
-          if (parsed.isNotEmpty) {
-            products.assignAll(parsed);
-            return;
-          }
-        }
-        throw Exception('Format respons tidak sesuai.');
-      } else {
-        throw Exception('Gagal memuat produk (${response.statusCode}).');
+      if (!_supabaseService.isReady) {
+        // Supabase belum terkonfigurasi / belum siap (mis. mode demo/offline)
+        products.assignAll(dummyProducts);
+        return;
       }
+
+      final query = _supabaseService.client!.from('products').select();
+
+      dynamic data;
+      try {
+        // Prefer newest first if your table has `created_at`.
+        data = await query.order('created_at', ascending: false);
+      } on PostgrestException catch (e) {
+        // If schema doesn't have created_at, retry without ordering.
+        final msg = '${e.message} ${e.details ?? ''} ${e.hint ?? ''}'
+            .toLowerCase();
+        final looksLikeMissingCreatedAt =
+            msg.contains('created_at') &&
+            (msg.contains('column') ||
+                msg.contains('not found') ||
+                msg.contains('schema cache') ||
+                e.code == 'PGRST204');
+
+        if (!looksLikeMissingCreatedAt) {
+          rethrow;
+        }
+        data = await query;
+      }
+
+      final parsed = (data as List<dynamic>)
+          .map(
+            (row) => Product.fromJson(
+              Map<String, dynamic>.from(row as Map<dynamic, dynamic>),
+            ),
+          )
+          .where((p) => p.id.isNotEmpty)
+          .toList();
+
+      products.assignAll(parsed);
     } catch (e) {
       lastError.value = e.toString();
-      if (products.isEmpty) {
-        products.assignAll(dummyProducts);
-      }
+      // Jangan fallback ke dummy jika Supabase sudah ready.
+      // Biar kelihatan jelas kalau ada problem RLS/schema/connection.
     } finally {
       isLoading.value = false;
     }

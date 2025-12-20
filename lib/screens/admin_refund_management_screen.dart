@@ -16,6 +16,11 @@ class _AdminRefundManagementScreenState
     extends State<AdminRefundManagementScreen> {
   String selectedFilter = 'all';
 
+  String _shortId(String value) {
+    if (value.isEmpty) return value;
+    return value.length <= 8 ? value : value.substring(0, 8);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -62,6 +67,35 @@ class _AdminRefundManagementScreenState
 
               final filteredRefunds = _getFilteredRefunds(controller.refunds);
               if (filteredRefunds.isEmpty) {
+                final err = controller.lastRefundsError.value;
+                if (err != null && err.isNotEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Gagal memuat refund dari Supabase',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            err,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: () => controller.fetchRefunds(),
+                            child: const Text('Coba lagi'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
                 return const Center(child: Text('Tidak ada refund'));
               }
 
@@ -112,7 +146,7 @@ class _AdminRefundManagementScreenState
                                           MainAxisAlignment.center,
                                       children: [
                                         Text(
-                                          'Refund #${refund.id.substring(3)}',
+                                          'Refund #${_shortId(refund.id)}',
                                           style: const TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.bold,
@@ -122,7 +156,7 @@ class _AdminRefundManagementScreenState
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          'Order #${refund.orderId.substring(3)}',
+                                          'Order #${_shortId(refund.orderId)}',
                                           style: const TextStyle(
                                             color: Colors.white70,
                                             fontSize: 11,

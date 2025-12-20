@@ -13,33 +13,58 @@ class AdminService extends GetxService {
   final SupabaseService _supabaseService;
   final NotificationService _notificationService;
 
-  // Hardcoded admin credentials for demo (in production, use proper auth)
-  static const Map<String, String> _adminCredentials = {
-    'admin@widacollection.com': 'admin123',
-    'superadmin@widacollection.com': 'superadmin123',
-  };
-
   bool get isReady => _supabaseService.isReady;
 
   // Admin Authentication
   Future<AdminUser?> adminLogin(String email, String password) async {
     try {
-      // Simple credential check (for demo purposes)
-      if (_adminCredentials[email] == password) {
-        final role = email.contains('superadmin') ? 'super_admin' : 'admin';
+      if (!isReady) return null;
 
-        // In production, verify with Supabase admin table
-        return AdminUser(
-          id: 'admin_${email.split('@')[0]}',
-          email: email,
-          name: role == 'super_admin' ? 'Super Admin' : 'Admin',
-          role: role,
-          createdAt: DateTime.now(),
-        );
+      await _supabaseService.signIn(email, password);
+
+      final admin = await getCurrentAdmin();
+      if (admin == null) {
+        // Logged in, but not an admin based on profiles.role
+        await _supabaseService.signOut();
+        return null;
       }
-      return null;
+      return admin;
     } catch (e) {
       debugPrint('Admin login error: $e');
+      return null;
+    }
+  }
+
+  Future<void> adminLogout() async {
+    if (!isReady) return;
+    await _supabaseService.signOut();
+  }
+
+  Future<AdminUser?> getCurrentAdmin() async {
+    if (!isReady) return null;
+    final userId = _supabaseService.currentUserId;
+    if (userId == null) return null;
+
+    try {
+      final profile = await _supabaseService.fetchProfile(userId);
+      final role = profile?.role;
+      final isAdmin = role == 'admin' || role == 'super_admin';
+      if (!isAdmin) return null;
+
+      final email = _supabaseService.client?.auth.currentUser?.email;
+      final name = (profile?.fullName.trim().isNotEmpty ?? false)
+          ? profile!.fullName
+          : (email ?? 'Admin');
+
+      return AdminUser(
+        id: userId,
+        email: email ?? profile?.email ?? '',
+        name: name,
+        role: role ?? 'admin',
+        createdAt: profile?.createdAt ?? DateTime.now(),
+      );
+    } catch (e) {
+      debugPrint('Get current admin error: $e');
       return null;
     }
   }
@@ -127,10 +152,13 @@ class AdminService extends GetxService {
       if (trackingNumber != null) updates['tracking_number'] = trackingNumber;
       if (notes != null) updates['notes'] = notes;
 
-      await _supabaseService.client!
+      final updated = await _supabaseService.client!
           .from('orders')
           .update(updates)
-          .eq('id', orderId);
+          .eq('id', orderId)
+          .select('id');
+
+      if (updated is List && updated.isEmpty) return false;
       return true;
     } catch (e) {
       debugPrint('Update order status error: $e');
@@ -141,13 +169,16 @@ class AdminService extends GetxService {
   Future<bool> updatePaymentStatus(String orderId, String paymentStatus) async {
     if (!isReady) return false;
     try {
-      await _supabaseService.client!
+      final updated = await _supabaseService.client!
           .from('orders')
           .update({
             'payment_status': paymentStatus,
             'updated_at': DateTime.now().toIso8601String(),
           })
-          .eq('id', orderId);
+          .eq('id', orderId)
+          .select('id');
+
+      if (updated is List && updated.isEmpty) return false;
       return true;
     } catch (e) {
       debugPrint('Update payment status error: $e');
@@ -180,7 +211,7 @@ class AdminService extends GetxService {
   }) async {
     if (!isReady) return false;
     try {
-      await _supabaseService.client!
+      final updated = await _supabaseService.client!
           .from('refunds')
           .update({
             'status': status,
@@ -188,7 +219,10 @@ class AdminService extends GetxService {
             'processed_by': adminId,
             if (adminNotes != null) 'admin_notes': adminNotes,
           })
-          .eq('id', refundId);
+          .eq('id', refundId)
+          .select('id');
+
+      if (updated is List && updated.isEmpty) return false;
 
       // If approved, update order payment status
       if (status == 'approved') {

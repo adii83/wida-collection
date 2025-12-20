@@ -54,7 +54,7 @@ Future<void> main() async {
     permanent: true,
   );
   final productService = await Get.putAsync<ProductService>(
-    () async => ProductService().init(),
+    () async => ProductService(supabaseService).init(),
     permanent: true,
   );
 

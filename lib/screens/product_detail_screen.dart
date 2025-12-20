@@ -6,9 +6,9 @@ import '../config/layout_values.dart';
 import '../controllers/wishlist_controller.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/cart_controller.dart';
-import '../data/dummy_products.dart';
 import '../models/cart_item.dart';
 import '../models/product_model.dart';
+import '../services/product_service.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/product_card.dart';
 import '../widgets/rounded_icon_button.dart';
@@ -43,7 +43,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final similarProducts = dummyProducts
+    final productService = Get.find<ProductService>();
+    final similarProducts = productService.products
         .where((p) => p.id != widget.product.id)
         .toList();
 

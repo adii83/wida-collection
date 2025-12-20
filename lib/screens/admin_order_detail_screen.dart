@@ -89,34 +89,44 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
   void _saveOrderStatus() async {
     final controller = Get.find<OrderController>();
 
-    // Update order dengan data baru
-    final updatedOrder = order.copyWith(
-      status: selectedStatus,
-      paymentStatus: selectedPaymentStatus,
-      trackingNumber: trackingController.text.isNotEmpty
-          ? trackingController.text
-          : null,
-      notes: notesController.text.isNotEmpty ? notesController.text : null,
+    final trackingNumber = trackingController.text.trim();
+    final notes = notesController.text.trim();
+
+    final okStatus = await controller.updateOrderStatus(
+      order.id,
+      selectedStatus,
+      trackingNumber: trackingNumber.isNotEmpty ? trackingNumber : null,
+      notes: notes.isNotEmpty ? notes : null,
     );
 
-    // Update order di list
-    final index = controller.orders.indexWhere((o) => o.id == order.id);
-    if (index != -1) {
-      controller.orders[index] = updatedOrder;
-      controller.orders.refresh();
+    if (!okStatus) {
+      Get.snackbar(
+        'Gagal',
+        'Gagal menyimpan status order ke Supabase. Cek RLS/policy atau pastikan admin sudah login.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
     }
 
-    Get.snackbar(
-      'Berhasil',
-      'Status order #${order.id} telah diperbarui',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.green,
-      colorText: Colors.white,
-      duration: const Duration(seconds: 2),
+    final okPayment = await controller.updatePaymentStatus(
+      order.id,
+      selectedPaymentStatus,
     );
 
-    // Kembali ke order management screen
-    await Future.delayed(const Duration(milliseconds: 800));
+    if (!okPayment) {
+      Get.snackbar(
+        'Gagal',
+        'Status order tersimpan, tapi gagal menyimpan status pembayaran ke Supabase.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    await Future.delayed(const Duration(milliseconds: 400));
     Get.back();
   }
 

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:uuid/uuid.dart';
 
 import '../config/design_tokens.dart';
 import '../config/layout_values.dart';
+import '../controllers/auth_controller.dart';
+import '../controllers/cart_controller.dart';
 import '../models/cart_item.dart';
+import '../models/order_model.dart';
+import '../services/supabase_service.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/rounded_icon_button.dart';
 import 'payment_success_screen.dart';
@@ -36,6 +41,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _expController = TextEditingController();
   final _cvvController = TextEditingController();
 
+  bool _isSubmitting = false;
+
   double get total => widget.subtotal;
 
   @override
@@ -48,6 +55,116 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _expController.dispose();
     _cvvController.dispose();
     super.dispose();
+  }
+
+  String _formatPaymentMethod(PaymentMethod method) {
+    switch (method) {
+      case PaymentMethod.card:
+        return 'card';
+      case PaymentMethod.ewallet:
+        return 'e-wallet';
+      case PaymentMethod.bank:
+        return 'transfer';
+    }
+  }
+
+  Future<void> _payAndCreateOrder() async {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+
+    try {
+      final supabase = Get.find<SupabaseService>();
+      final auth = Get.find<AuthController>();
+
+      if (!supabase.isReady) {
+        Get.snackbar(
+          'Supabase belum siap',
+          'Periksa konfigurasi Supabase di .env / SupabaseConfig.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      }
+      if (!auth.isLoggedIn || auth.currentUser.value == null) {
+        Get.snackbar(
+          'Harus login',
+          'Silakan login dulu untuk membuat pesanan.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      }
+
+      final now = DateTime.now();
+      final user = auth.currentUser.value!;
+      final profile = auth.profile.value;
+      final profileName = (profile?.fullName ?? '').trim();
+
+      final orderItems = widget.items
+          .map(
+            (ci) => OrderItem(
+              productId: ci.product.id,
+              productName: ci.product.name,
+              productImage: ci.product.image,
+              price: ci.product.price,
+              quantity: ci.quantity,
+            ),
+          )
+          .toList();
+
+      // Use UUID to match Supabase `orders.id` when it's configured as `uuid`
+      final orderId = const Uuid().v4();
+
+      final order = OrderModel(
+        id: orderId,
+        userId: user.id,
+        userName: profileName.isNotEmpty
+            ? profileName
+            : _nameController.text.trim(),
+        userEmail: profile?.email ?? user.email ?? '',
+        items: orderItems,
+        totalAmount: total,
+        status: 'pending',
+        paymentMethod: _formatPaymentMethod(_method),
+        // Demo payment: user pressed "Bayar" -> mark as paid
+        paymentStatus: 'paid',
+        shippingAddress: _addressController.text.trim(),
+        trackingNumber: null,
+        createdAt: now,
+        updatedAt: now,
+        notes: 'Phone: ${_phoneController.text.trim()}',
+      );
+
+      final saved = await supabase.createOrder(order);
+      if (saved == null) {
+        Get.snackbar(
+          'Gagal membuat order',
+          'Order tidak tersimpan ke Supabase.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      }
+
+      // Clear cart after successful order creation
+      try {
+        final cart = Get.find<CartController>();
+        await cart.clearCart();
+      } catch (_) {
+        // ignore if cart controller not available
+      }
+
+      Get.to(
+        () => PaymentSuccessScreen(
+          orderId: saved.id,
+          total: total,
+          method: _method.name,
+        ),
+      );
+    } catch (e) {
+      Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.BOTTOM);
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   @override
@@ -182,17 +299,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
               child: GradientButton(
                 label: 'Bayar',
-                onPressed: () {
-                  final orderId =
-                      '#THF${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-                  Get.to(
-                    () => PaymentSuccessScreen(
-                      orderId: orderId,
-                      total: total,
-                      method: _method.name,
-                    ),
-                  );
-                },
+                onPressed: _isSubmitting ? null : _payAndCreateOrder,
               ),
             ),
           ],

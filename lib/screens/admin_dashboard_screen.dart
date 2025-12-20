@@ -61,6 +61,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     Navigator.pop(context); // Close popup
                     final auth = Get.find<AuthController>();
                     await auth.signOut();
+                    Get.find<AdminController>().logout();
                     Get.offAll(() => const AuthGate()); // Reset to gate
                   },
                 ),

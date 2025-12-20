@@ -19,7 +19,10 @@ class AuthController extends GetxController {
 
   bool get canUseSupabase => _supabaseService.isReady;
   bool get isLoggedIn => currentUser.value != null;
-  bool get isAdmin => profile.value?.role == 'admin';
+  bool get isAdmin {
+    final role = profile.value?.role;
+    return role == 'admin' || role == 'super_admin';
+  }
 
   @override
   void onInit() {

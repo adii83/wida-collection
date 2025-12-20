@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/order_controller.dart';
+import '../services/admin_service.dart';
 import 'admin_order_detail_screen.dart';
 
 class AdminOrderManagementScreen extends StatefulWidget {
@@ -18,7 +19,7 @@ class _AdminOrderManagementScreenState
     super.initState();
     // Initialize OrderController if not exists
     if (!Get.isRegistered<OrderController>()) {
-      Get.put(OrderController(Get.find()));
+      Get.put(OrderController(Get.find<AdminService>()));
     }
     Get.find<OrderController>().fetchOrders();
   }
@@ -56,6 +57,36 @@ class _AdminOrderManagementScreenState
 
               final orders = controller.filteredOrders;
               if (orders.isEmpty) {
+                final err = controller.lastOrdersError.value;
+                if (err != null && err.isNotEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Gagal memuat order dari Supabase',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            err,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: () => controller.fetchOrders(),
+                            child: const Text('Coba lagi'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
                 return const Center(child: Text('Tidak ada order'));
               }
 

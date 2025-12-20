@@ -93,32 +93,25 @@ class _AdminRefundDetailScreenState extends State<AdminRefundDetailScreen> {
   void _saveRefundStatus() async {
     final controller = Get.find<OrderController>();
 
-    final updatedRefund = refund.copyWith(
-      status: selectedStatus,
-      processedAt: DateTime.now(),
-      adminNotes: adminNotesController.text.isNotEmpty
-          ? adminNotesController.text
-          : null,
-      processedBy: 'Admin Wida',
+    final notes = adminNotesController.text.trim();
+    final ok = await controller.processRefund(
+      refund.id,
+      selectedStatus,
+      adminNotes: notes.isNotEmpty ? notes : null,
     );
 
-    // Update refund di list
-    final index = controller.refunds.indexWhere((r) => r.id == refund.id);
-    if (index != -1) {
-      controller.refunds[index] = updatedRefund;
-      controller.refunds.refresh();
+    if (!ok) {
+      Get.snackbar(
+        'Gagal',
+        'Gagal memproses refund di Supabase. Cek RLS/policy atau pastikan admin sudah login.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
     }
 
-    Get.snackbar(
-      'Berhasil',
-      'Status refund #${refund.id} telah diperbarui',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.green,
-      colorText: Colors.white,
-      duration: const Duration(seconds: 2),
-    );
-
-    await Future.delayed(const Duration(milliseconds: 800));
+    await Future.delayed(const Duration(milliseconds: 400));
     Get.back();
   }
 

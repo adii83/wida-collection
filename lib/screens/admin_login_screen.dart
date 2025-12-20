@@ -177,7 +177,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '🔑 Demo Credentials:',
+                                'Catatan:',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: Colors.blue[900],
@@ -185,14 +185,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Admin: admin@widacollection.com / admin123',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.blue[700],
-                                ),
-                              ),
-                              Text(
-                                'Super Admin: superadmin@widacollection.com / superadmin123',
+                                'Gunakan akun Supabase Auth dengan role admin/super_admin di tabel profiles.',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.blue[700],

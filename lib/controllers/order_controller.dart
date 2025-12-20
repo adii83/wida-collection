@@ -2,8 +2,6 @@ import 'package:get/get.dart';
 import '../models/order_model.dart';
 import '../models/refund_model.dart';
 import '../services/admin_service.dart';
-import '../data/dummy_orders.dart';
-import '../data/dummy_refunds.dart';
 import 'admin_controller.dart';
 
 class OrderController extends GetxController {
@@ -14,6 +12,8 @@ class OrderController extends GetxController {
   final orders = <OrderModel>[].obs;
   final refunds = <RefundModel>[].obs;
   final isLoading = false.obs;
+  final lastOrdersError = RxnString();
+  final lastRefundsError = RxnString();
   final selectedFilter =
       'all'.obs; // all, pending, processing, shipped, delivered
 
@@ -32,16 +32,12 @@ class OrderController extends GetxController {
   Future<void> fetchOrders() async {
     try {
       isLoading.value = true;
+      lastOrdersError.value = null;
       final data = await _adminService.fetchAllOrders();
-      if (data.isNotEmpty) {
-        orders.assignAll(data);
-      } else {
-        // Use dummy data if API returns empty
-        orders.assignAll(dummyOrders);
-      }
+      orders.assignAll(data);
     } catch (e) {
-      // Use dummy data if API fails
-      orders.assignAll(dummyOrders);
+      lastOrdersError.value = e.toString();
+      orders.clear();
     } finally {
       isLoading.value = false;
     }
@@ -50,16 +46,12 @@ class OrderController extends GetxController {
   Future<void> fetchRefunds() async {
     try {
       isLoading.value = true;
+      lastRefundsError.value = null;
       final data = await _adminService.fetchAllRefunds();
-      if (data.isNotEmpty) {
-        refunds.assignAll(data);
-      } else {
-        // Use dummy data if API returns empty
-        refunds.assignAll(dummyRefunds);
-      }
+      refunds.assignAll(data);
     } catch (e) {
-      // Use dummy data if API fails
-      refunds.assignAll(dummyRefunds);
+      lastRefundsError.value = e.toString();
+      refunds.clear();
     } finally {
       isLoading.value = false;
     }
