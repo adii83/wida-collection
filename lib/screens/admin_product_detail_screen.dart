@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import '../models/product_model.dart';
 import '../controllers/admin_controller.dart';
 
@@ -76,7 +77,8 @@ class _AdminProductDetailScreenState extends State<AdminProductDetailScreen> {
         description: _descriptionController.text,
       );
 
-      await _adminController.updateProduct(updatedProduct);
+      final ok = await _adminController.updateProduct(updatedProduct);
+      if (!ok) return;
       setState(() {
         _currentProduct = updatedProduct;
         _selectedImage = null;
@@ -167,19 +169,39 @@ class _AdminProductDetailScreenState extends State<AdminProductDetailScreen> {
                       width: double.infinity,
                       child: _selectedImage != null
                           ? Image.file(_selectedImage!, fit: BoxFit.cover)
-                          : _currentProduct.isAssetImage
-                          ? Image.asset(
-                              _currentProduct.image,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  const Icon(Icons.image, size: 80),
-                            )
-                          : Image.network(
-                              _currentProduct.image,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  const Icon(Icons.image, size: 80),
-                            ),
+                          : () {
+                              final src = _currentProduct.image;
+                              if (src.startsWith('http')) {
+                                return Image.network(
+                                  src,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) =>
+                                      const Icon(Icons.image, size: 80),
+                                );
+                              }
+                              if (src.startsWith('assets/')) {
+                                return Image.asset(
+                                  src,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) =>
+                                      const Icon(Icons.image, size: 80),
+                                );
+                              }
+                              final looksLikeLocalFile =
+                                  !kIsWeb &&
+                                  (src.startsWith('/') ||
+                                      src.contains('\\') ||
+                                      src.contains('/data/'));
+                              if (looksLikeLocalFile) {
+                                return Image.file(
+                                  File(src),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) =>
+                                      const Icon(Icons.image, size: 80),
+                                );
+                              }
+                              return const Icon(Icons.image, size: 80);
+                            }(),
                     ),
                   ),
                   Positioned(

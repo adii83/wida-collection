@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import 'dart:io';
 import '../models/admin_user.dart';
 import '../models/order_model.dart';
 import '../models/refund_model.dart';
@@ -73,11 +74,27 @@ class AdminService extends GetxService {
   Future<bool> addProduct(Product product) async {
     if (!isReady) return false;
     try {
+      var imageValue = product.image;
+      if (!kIsWeb && imageValue.isNotEmpty) {
+        final file = File(imageValue);
+        if (file.existsSync()) {
+          final uploaded = await _supabaseService.uploadProductImage(
+            file,
+            productId: product.id,
+          );
+          if (uploaded == null || uploaded.isEmpty) {
+            throw Exception('Upload gambar produk gagal');
+          }
+          imageValue = uploaded;
+        }
+      }
+
       await _supabaseService.client!.from('products').insert({
         'id': product.id,
         'name': product.name,
-        'image': product.image,
+        'image': imageValue,
         'price': product.price,
+        'description': product.description,
         'created_at': DateTime.now().toIso8601String(),
       });
       return true;
@@ -90,12 +107,28 @@ class AdminService extends GetxService {
   Future<bool> updateProduct(Product product) async {
     if (!isReady) return false;
     try {
+      var imageValue = product.image;
+      if (!kIsWeb && imageValue.isNotEmpty) {
+        final file = File(imageValue);
+        if (file.existsSync()) {
+          final uploaded = await _supabaseService.uploadProductImage(
+            file,
+            productId: product.id,
+          );
+          if (uploaded == null || uploaded.isEmpty) {
+            throw Exception('Upload gambar produk gagal');
+          }
+          imageValue = uploaded;
+        }
+      }
+
       await _supabaseService.client!
           .from('products')
           .update({
             'name': product.name,
-            'image': product.image,
+            'image': imageValue,
             'price': product.price,
+            'description': product.description,
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', product.id);

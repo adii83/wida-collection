@@ -192,6 +192,63 @@ class SupabaseService extends GetxService {
     }
   }
 
+  Future<String?> uploadProductImage(
+    File file, {
+    required String productId,
+  }) async {
+    if (!isReady) return null;
+    try {
+      final ext = () {
+        final p = file.path;
+        final dot = p.lastIndexOf('.');
+        if (dot == -1 || dot == p.length - 1) return '';
+        final e = p.substring(dot).toLowerCase();
+        // Basic allowlist
+        if (e == '.jpg' || e == '.jpeg' || e == '.png' || e == '.webp')
+          return e;
+        return '';
+      }();
+
+      final contentType = () {
+        switch (ext) {
+          case '.png':
+            return 'image/png';
+          case '.webp':
+            return 'image/webp';
+          case '.jpg':
+          case '.jpeg':
+          default:
+            return 'image/jpeg';
+        }
+      }();
+
+      const bucket = 'product-images';
+      final objectPath =
+          'products/$productId/${const Uuid().v4()}${ext.isEmpty ? '.jpg' : ext}';
+
+      final sw = Stopwatch()..start();
+      await _client!.storage
+          .from(bucket)
+          .upload(
+            objectPath,
+            file,
+            fileOptions: FileOptions(
+              cacheControl: '3600',
+              upsert: false,
+              contentType: contentType,
+            ),
+          );
+      sw.stop();
+      debugPrint('Supabase upload: ${sw.elapsedMilliseconds} ms');
+
+      final publicUrl = _client!.storage.from(bucket).getPublicUrl(objectPath);
+      return '$publicUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+    } catch (e) {
+      debugPrint('Upload product image failed: $e');
+      return null;
+    }
+  }
+
   void subscribeNotes(void Function(PostgresChangePayload payload) onChange) {
     if (!isReady) return;
     _notesChannel?.unsubscribe();

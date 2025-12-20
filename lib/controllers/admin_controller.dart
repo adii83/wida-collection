@@ -98,10 +98,12 @@ class AdminController extends GetxController {
       if (success) {
         Get.snackbar('Sukses', 'Produk berhasil ditambahkan');
         return true;
-      } else {
-        Get.snackbar('Gagal', 'Gagal menambahkan produk');
-        return false;
       }
+      Get.snackbar('Gagal', 'Gagal menambahkan produk');
+      return false;
+    } catch (e) {
+      Get.snackbar('Gagal', e.toString());
+      return false;
     } finally {
       isLoading.value = false;
     }
@@ -122,10 +124,12 @@ class AdminController extends GetxController {
       if (success) {
         Get.snackbar('Sukses', 'Produk berhasil diupdate');
         return true;
-      } else {
-        Get.snackbar('Gagal', 'Gagal mengupdate produk');
-        return false;
       }
+      Get.snackbar('Gagal', 'Gagal mengupdate produk');
+      return false;
+    } catch (e) {
+      Get.snackbar('Gagal', e.toString());
+      return false;
     } finally {
       isLoading.value = false;
     }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 import '../config/design_tokens.dart';
 import '../models/product_model.dart';
@@ -27,6 +29,44 @@ class ProductCard extends StatelessWidget {
     final scheme = theme.colorScheme;
     final badgeColor = scheme.surface;
     final isDark = theme.brightness == Brightness.dark;
+
+    Widget buildImage() {
+      final src = product.image;
+      if (src.startsWith('http')) {
+        return Image.network(
+          src,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, progress) => AnimatedOpacity(
+            opacity: progress == null ? 1 : 0.6,
+            duration: const Duration(milliseconds: 300),
+            child: child,
+          ),
+          errorBuilder: (_, __, ___) => const Icon(Icons.image),
+        );
+      }
+
+      if (src.startsWith('assets/')) {
+        return Image.asset(
+          src,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const Icon(Icons.image),
+        );
+      }
+
+      final looksLikeLocalFile =
+          !kIsWeb &&
+          (src.startsWith('/') || src.contains('\\') || src.contains('/data/'));
+      if (looksLikeLocalFile) {
+        return Image.file(
+          File(src),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const Icon(Icons.image),
+        );
+      }
+
+      return const Icon(Icons.image);
+    }
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       decoration: BoxDecoration(
@@ -49,22 +89,7 @@ class ProductCard extends StatelessWidget {
                   ),
                   child: Stack(
                     children: [
-                      Positioned.fill(
-                        child: product.image.startsWith('http')
-                            ? Image.network(
-                                product.image,
-                                fit: BoxFit.cover,
-                                loadingBuilder: (context, child, progress) =>
-                                    AnimatedOpacity(
-                                      opacity: progress == null ? 1 : 0.6,
-                                      duration: const Duration(
-                                        milliseconds: 300,
-                                      ),
-                                      child: child,
-                                    ),
-                              )
-                            : Image.asset(product.image, fit: BoxFit.cover),
-                      ),
+                      Positioned.fill(child: buildImage()),
                       if (badge != null)
                         Positioned(
                           top: 12,

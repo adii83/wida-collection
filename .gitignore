@@ -51,7 +51,6 @@ pubspec.lock
 /android/app/release/
 /android/local.properties
 /android/key.properties
-/android/app/google-services.json
 
 # --- iOS related ---
 /ios/Pods/
@@ -96,7 +95,6 @@ lib_dump.txt
 coverage/
 reports/
 test-output/
-assets/config/service-account.json
 
 # ==========================================================
 # ✅ KEEP THESE FILES FOR GITHUB

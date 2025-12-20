@@ -81,7 +81,10 @@ class _AdminAddProductScreenState extends State<AdminAddProductScreen> {
         image: _selectedImage!.path,
       );
 
-      await adminController.addProduct(newProduct);
+      final success = await adminController.addProduct(newProduct);
+      if (!success) {
+        return;
+      }
 
       Get.snackbar(
         'Berhasil',

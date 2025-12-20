@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 import '../config/design_tokens.dart';
@@ -62,19 +64,46 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       children: [
                         Hero(
                           tag: widget.product.id,
-                          child: widget.product.image.startsWith('http')
-                              ? Image.network(
-                                  widget.product.image,
-                                  height: 360,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                )
-                              : Image.asset(
-                                  widget.product.image,
-                                  height: 360,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
+                          child: () {
+                            final src = widget.product.image;
+                            if (src.startsWith('http')) {
+                              return Image.network(
+                                src,
+                                height: 360,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              );
+                            }
+                            if (src.startsWith('assets/')) {
+                              return Image.asset(
+                                src,
+                                height: 360,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              );
+                            }
+
+                            final looksLikeLocalFile =
+                                !kIsWeb &&
+                                (src.startsWith('/') ||
+                                    src.contains('\\') ||
+                                    src.contains('/data/'));
+                            if (looksLikeLocalFile) {
+                              return Image.file(
+                                File(src),
+                                height: 360,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              );
+                            }
+
+                            return Image.asset(
+                              'assets/images/thrift1.jpg',
+                              height: 360,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            );
+                          }(),
                         ),
                         Positioned(
                           top: 16,
