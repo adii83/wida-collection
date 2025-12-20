@@ -13,7 +13,7 @@ class WishlistScreen extends GetView<WishlistController> {
     final auth = Get.find<AuthController>();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Wishlist & Notifikasi Restock'),
+        title: const Text('Wishlist'),
         actions: [
           Obx(
             () => auth.isLoggedIn
@@ -47,7 +47,7 @@ class WishlistScreen extends GetView<WishlistController> {
                 Icon(Icons.favorite_border, size: 64),
                 SizedBox(height: 12),
                 Text(
-                  'Belum ada produk favorit.\nSentuh ikon hati untuk menambahkan.\nLogin/Signup Supabase dulu supaya wishlist Anda tersimpan per akun dan tersinkron.',
+                  'Belum ada produk favorit.\nSentuh ikon hati untuk menambahkan.',
                   textAlign: TextAlign.center,
                 ),
               ],
