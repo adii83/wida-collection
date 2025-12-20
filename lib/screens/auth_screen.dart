@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import '../config/design_tokens.dart';
 import '../config/layout_values.dart';
 import '../controllers/auth_controller.dart';
-import '../controllers/admin_controller.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/rounded_icon_button.dart';
 import 'admin_dashboard_screen.dart';
@@ -27,6 +26,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _usernameController = TextEditingController();
   bool _rememberMe = false;
 
   late AuthMode _mode = widget.initialMode;
@@ -41,25 +41,16 @@ class _AuthScreenState extends State<AuthScreen> {
     _passwordController.dispose();
     _nameController.dispose();
     _confirmPasswordController.dispose();
+    _usernameController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final email = _emailController.text.trim();
+    final identifier = _emailController.text.trim();
     final password = _passwordController.text.trim();
-
-    // Jalur login admin: gunakan kredensial demo dan langsung ke dashboard
-    if (_isLogin &&
-        email == 'admin@widacollection.com' &&
-        password == 'admin123') {
-      final adminController = Get.find<AdminController>();
-      final success = await adminController.login(email, password);
-      if (success && mounted) {
-        Get.offAll(() => const AdminDashboardScreen());
-      }
-      return;
-    }
+    final fullName = _nameController.text.trim();
+    final username = _usernameController.text.trim();
 
     if (!_auth.canUseSupabase) {
       final navigator = Navigator.of(context);
@@ -77,8 +68,13 @@ class _AuthScreenState extends State<AuthScreen> {
     }
 
     final success = _isLogin
-        ? await _auth.signIn(email, password)
-        : await _auth.signUp(email, password);
+        ? await _auth.signInWithIdentifier(identifier, password)
+        : await _auth.signUp(
+            identifier,
+            password,
+            fullName: fullName,
+            username: username,
+          );
 
     if (success && mounted) {
       Get.snackbar(
@@ -87,13 +83,17 @@ class _AuthScreenState extends State<AuthScreen> {
         snackPosition: SnackPosition.BOTTOM,
       );
 
-      // Setelah login/daftar user biasa, kembali ke layar sebelumnya
-      // atau ke Home jika AuthScreen menjadi root.
-      final navigator = Navigator.of(context);
-      if (navigator.canPop()) {
-        navigator.pop();
+      // Redirect logic based on Role
+      if (_auth.isAdmin) {
+        Get.offAll(() => const AdminDashboardScreen());
       } else {
-        Get.offAll(() => const HomeScreen());
+        // Standard User redirection
+        final navigator = Navigator.of(context);
+        if (navigator.canPop()) {
+          navigator.pop();
+        } else {
+          Get.offAll(() => const HomeScreen());
+        }
       }
     }
   }
@@ -118,11 +118,15 @@ class _AuthScreenState extends State<AuthScreen> {
                   // Jika user sudah login, langsung tutup AuthScreen
                   // agar panel "Sudah Masuk" tidak sempat tampil.
                   WidgetsBinding.instance.addPostFrameCallback((_) {
-                    final navigator = Navigator.of(context);
-                    if (navigator.canPop()) {
-                      navigator.pop();
+                    if (_auth.isAdmin) {
+                      Get.offAll(() => const AdminDashboardScreen());
                     } else {
-                      Get.offAll(() => const HomeScreen());
+                      final navigator = Navigator.of(context);
+                      if (navigator.canPop()) {
+                        navigator.pop();
+                      } else {
+                        Get.offAll(() => const HomeScreen());
+                      }
                     }
                   });
                   return const SizedBox.shrink();
@@ -222,18 +226,36 @@ class _AuthScreenState extends State<AuthScreen> {
                                   },
                                 ),
                                 AppSpacing.vItem,
+                                TextFormField(
+                                  controller: _usernameController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Username',
+                                  ),
+                                  validator: (value) {
+                                    if (!_isLogin &&
+                                        (value == null || value.isEmpty)) {
+                                      return 'Username wajib diisi';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                AppSpacing.vItem,
                               ],
                               TextFormField(
                                 controller: _emailController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Email',
+                                decoration: InputDecoration(
+                                  labelText: _isLogin
+                                      ? 'Email atau Username'
+                                      : 'Email',
                                 ),
                                 keyboardType: TextInputType.emailAddress,
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Email wajib diisi';
+                                    return _isLogin
+                                        ? 'Email atau username wajib diisi'
+                                        : 'Email wajib diisi';
                                   }
-                                  if (!value.contains('@')) {
+                                  if (!_isLogin && !value.contains('@')) {
                                     return 'Format email tidak valid';
                                   }
                                   return null;

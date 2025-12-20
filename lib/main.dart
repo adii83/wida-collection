@@ -81,7 +81,10 @@ Future<void> main() async {
   );
 
   // Admin services and controllers
-  final adminService = Get.put(AdminService(supabaseService), permanent: true);
+  final adminService = Get.put(
+    AdminService(supabaseService, notificationService),
+    permanent: true,
+  );
   Get.put(AdminController(adminService), permanent: true);
 
   runApp(const WindaCollectionApp());

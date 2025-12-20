@@ -200,11 +200,14 @@ class _CloudNotesScreenState extends State<CloudNotesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primaryPink,
-        onPressed: () => _openNoteSheet(),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Catatan', style: TextStyle(color: Colors.white)),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 100), // Lift above CustomNavBar
+        child: FloatingActionButton.extended(
+          backgroundColor: AppColors.primaryPink,
+          onPressed: () => _openNoteSheet(),
+          icon: const Icon(Icons.add, color: Colors.white),
+          label: const Text('Catatan', style: TextStyle(color: Colors.white)),
+        ),
       ),
       body: RefreshIndicator(
         onRefresh: () => cloudController.refreshNotes(),
@@ -259,7 +262,43 @@ class _CloudNotesScreenState extends State<CloudNotesScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    // Intentionally no technical backend/sync info in UI
+                    // Persistent loading indicator for sync
+                    Obx(() {
+                      if (cloudController.isSyncing.value) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const LinearProgressIndicator(
+                              backgroundColor: Colors.white24,
+                              color: Colors.white,
+                              minHeight: 4,
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: const [
+                                SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Sedang Menyimpan...',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    }),
                   ],
                 ),
               ),

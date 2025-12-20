@@ -5,7 +5,8 @@ import 'admin_product_management_screen.dart';
 import 'admin_order_management_screen.dart';
 import 'admin_refund_management_screen.dart';
 import 'admin_notification_screen.dart';
-import 'auth_screen.dart';
+import 'auth_gate.dart';
+import '../controllers/auth_controller.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -25,13 +26,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Future<void> _loadStatistics() async {
-    setState(() => _isLoadingStats = true);
+    if (mounted) setState(() => _isLoadingStats = true);
     final adminController = Get.find<AdminController>();
     final stats = await adminController.getStatistics();
-    setState(() {
-      _statistics = stats;
-      _isLoadingStats = false;
-    });
+    if (mounted) {
+      setState(() {
+        _statistics = stats;
+        _isLoadingStats = false;
+      });
+    }
   }
 
   @override
@@ -54,12 +57,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 child: ListTile(
                   leading: const Icon(Icons.logout),
                   title: const Text('Logout'),
-                  onTap: () {
-                    // Tutup popup menu terlebih dahulu
-                    Navigator.pop(context);
-                    adminController.logout();
-                    // Arahkan kembali ke halaman login unified
-                    Get.offAll(() => const AuthScreen());
+                  onTap: () async {
+                    Navigator.pop(context); // Close popup
+                    final auth = Get.find<AuthController>();
+                    await auth.signOut();
+                    Get.offAll(() => const AuthGate()); // Reset to gate
                   },
                 ),
               ),

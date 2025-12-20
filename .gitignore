@@ -96,6 +96,7 @@ lib_dump.txt
 coverage/
 reports/
 test-output/
+assets/config/service-account.json
 
 # ==========================================================
 # ✅ KEEP THESE FILES FOR GITHUB

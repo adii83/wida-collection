@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -5,6 +6,8 @@ import '../config/supabase_config.dart';
 import '../models/note_model.dart';
 import '../models/wishlist_item.dart';
 import '../models/cart_item_model.dart';
+import '../models/user_profile.dart';
+import '../models/user_address.dart';
 
 class SupabaseService extends GetxService {
   SupabaseClient? _client;
@@ -40,14 +43,71 @@ class SupabaseService extends GetxService {
     return _client!.auth.signInWithPassword(email: email, password: password);
   }
 
-  Future<AuthResponse?> signUp(String email, String password) async {
+  Future<AuthResponse?> signUp(
+    String email,
+    String password, {
+    Map<String, dynamic>? data,
+  }) async {
     if (!isReady) return null;
-    return _client!.auth.signUp(email: email, password: password);
+    return _client!.auth.signUp(email: email, password: password, data: data);
   }
 
   Future<void> signOut() async {
     if (!isReady) return;
     await _client!.auth.signOut();
+  }
+
+  // User profile helpers (profiles table)
+  Future<UserProfile?> fetchProfile(String userId) async {
+    if (!isReady) return null;
+    final data = await _client!
+        .from('profiles')
+        .select()
+        .eq('id', userId)
+        .maybeSingle();
+    if (data == null) return null;
+    return UserProfile.fromMap(
+      Map<String, dynamic>.from(data as Map<dynamic, dynamic>),
+    );
+  }
+
+  Future<UserProfile?> upsertProfile(UserProfile profile) async {
+    if (!isReady) return null;
+    final payload = await _client!
+        .from('profiles')
+        .upsert(profile.toMap())
+        .select()
+        .single();
+    return UserProfile.fromMap(
+      Map<String, dynamic>.from(payload as Map<dynamic, dynamic>),
+    );
+  }
+
+  Future<void> updateFcmToken(String userId, String token) async {
+    if (!isReady) return;
+    await _client!
+        .from('profiles')
+        .update({'fcm_token': token})
+        .eq('id', userId);
+  }
+
+  /// Resolve login identifier (email or username) to an email
+  /// so we can still use Supabase's email+password auth.
+  Future<String?> resolveEmailForLogin(String identifier) async {
+    if (!isReady) return null;
+    // If looks like an email, use it directly
+    if (identifier.contains('@')) return identifier;
+
+    // Otherwise treat as username and look up in profiles
+    final data = await _client!
+        .from('profiles')
+        .select('email')
+        .eq('username', identifier)
+        .maybeSingle();
+
+    if (data == null) return null;
+    final map = Map<String, dynamic>.from(data as Map<dynamic, dynamic>);
+    return map['email'] as String?;
   }
 
   Future<List<NoteModel>> fetchNotes() async {
@@ -97,6 +157,30 @@ class SupabaseService extends GetxService {
     await _client!.from('notes').delete().eq('id', id);
     sw.stop();
     debugPrint('Supabase delete: ${sw.elapsedMilliseconds} ms');
+  }
+
+  // Storage
+  Future<String?> uploadAvatar(File file, String path) async {
+    if (!isReady) return null;
+    try {
+      final sw = Stopwatch()..start();
+      await _client!.storage
+          .from('avatars')
+          .upload(
+            path,
+            file,
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+          );
+      sw.stop();
+      debugPrint('Supabase upload: ${sw.elapsedMilliseconds} ms');
+
+      final publicUrl = _client!.storage.from('avatars').getPublicUrl(path);
+      // Hack: Add timestamp to force flutter to reload image if URL is same but content changed (though path usually unique)
+      return '$publicUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+    } catch (e) {
+      debugPrint('Upload failed: $e');
+      return null;
+    }
   }
 
   void subscribeNotes(void Function(PostgresChangePayload payload) onChange) {
@@ -219,5 +303,54 @@ class SupabaseService extends GetxService {
         callback: onChange,
       )
       ..subscribe();
+  }
+
+  // User addresses (addresses table)
+  Future<List<UserAddress>> fetchAddresses(String owner) async {
+    if (!isReady) return [];
+    final data = await _client!
+        .from('addresses')
+        .select()
+        .eq('owner', owner)
+        .order('is_default', ascending: false)
+        .order('updated_at', ascending: false);
+    return (data as List<dynamic>)
+        .map(
+          (row) => UserAddress.fromMap(
+            Map<String, dynamic>.from(row as Map<dynamic, dynamic>),
+          ),
+        )
+        .toList();
+  }
+
+  Future<UserAddress?> upsertAddress(UserAddress address, String owner) async {
+    if (!isReady) return null;
+    final payload = await _client!
+        .from('addresses')
+        .upsert(address.toMap(owner: owner))
+        .select()
+        .single();
+    return UserAddress.fromMap(
+      Map<String, dynamic>.from(payload as Map<dynamic, dynamic>),
+    );
+  }
+
+  Future<void> deleteAddress(String id) async {
+    if (!isReady) return;
+    await _client!.from('addresses').delete().eq('id', id);
+  }
+
+  Future<void> setDefaultAddress(String id, String owner) async {
+    if (!isReady) return;
+    final client = _client!;
+    await client
+        .from('addresses')
+        .update({'is_default': false})
+        .eq('owner', owner);
+    await client
+        .from('addresses')
+        .update({'is_default': true})
+        .eq('id', id)
+        .eq('owner', owner);
   }
 }

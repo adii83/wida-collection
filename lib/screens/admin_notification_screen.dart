@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/admin_controller.dart';
+import '../models/product_model.dart';
+import 'admin_select_product_screen.dart';
 import 'admin_select_users_screen.dart';
 
 class AdminNotificationScreen extends StatefulWidget {
@@ -17,6 +19,7 @@ class _AdminNotificationScreenState extends State<AdminNotificationScreen> {
   final _formKey = GlobalKey<FormState>();
   String _targetType = 'all'; // all, specific
   List<String> _selectedUserIds = []; // Selected user IDs
+  Product? _selectedProduct; // Linked product
 
   @override
   void dispose() {
@@ -44,6 +47,7 @@ class _AdminNotificationScreenState extends State<AdminNotificationScreen> {
       title: _titleController.text,
       body: _bodyController.text,
       targetUserId: _targetType == 'all' ? null : _selectedUserIds.join(','),
+      data: {if (_selectedProduct != null) 'productId': _selectedProduct!.id},
     );
 
     if (success) {
@@ -52,6 +56,7 @@ class _AdminNotificationScreenState extends State<AdminNotificationScreen> {
       setState(() {
         _selectedUserIds.clear();
         _targetType = 'all';
+        _selectedProduct = null;
       });
     }
   }
@@ -263,6 +268,63 @@ class _AdminNotificationScreenState extends State<AdminNotificationScreen> {
                   return null;
                 },
               ),
+              const SizedBox(height: 16),
+
+              // Linked Product Section
+              Text(
+                'Tautkan Produk (Opsional)',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (_selectedProduct != null)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      image: DecorationImage(
+                        image: NetworkImage(_selectedProduct!.image),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  title: Text(
+                    _selectedProduct!.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    'ID: ${_selectedProduct!.id}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () {
+                      setState(() {
+                        _selectedProduct = null;
+                      });
+                    },
+                  ),
+                )
+              else
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final result = await Get.to(
+                      () => const AdminSelectProductScreen(),
+                    );
+                    if (result != null && result is Product) {
+                      setState(() {
+                        _selectedProduct = result;
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.add_link),
+                  label: const Text('Pilih Produk'),
+                ),
               const SizedBox(height: 24),
               Card(
                 color: Colors.amber[50],

@@ -326,7 +326,7 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: selectedStatus,
+                    initialValue: selectedStatus,
                     decoration: InputDecoration(
                       labelText: 'Status Order',
                       border: OutlineInputBorder(
@@ -353,7 +353,7 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: selectedPaymentStatus,
+                    initialValue: selectedPaymentStatus,
                     decoration: InputDecoration(
                       labelText: 'Status Pembayaran',
                       border: OutlineInputBorder(

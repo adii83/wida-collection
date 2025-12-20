@@ -1,20 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-// Dummy user model for selection
-class UserItem {
-  final String id;
-  final String name;
-  final String email;
-  final String? photoUrl;
-
-  UserItem({
-    required this.id,
-    required this.name,
-    required this.email,
-    this.photoUrl,
-  });
-}
+import '../services/supabase_service.dart';
+import '../models/user_profile.dart';
 
 class AdminSelectUsersScreen extends StatefulWidget {
   const AdminSelectUsersScreen({super.key});
@@ -27,24 +15,39 @@ class _AdminSelectUsersScreenState extends State<AdminSelectUsersScreen> {
   final List<String> _selectedUserIds = [];
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  List<UserProfile> _allUsers = [];
+  bool _isLoading = true;
 
-  // Dummy users data - in production, fetch from backend
-  final List<UserItem> _allUsers = [
-    UserItem(id: 'user_001', name: 'Budi Santoso', email: 'budi@example.com'),
-    UserItem(id: 'user_002', name: 'Siti Aminah', email: 'siti@example.com'),
-    UserItem(id: 'user_003', name: 'Andi Wijaya', email: 'andi@example.com'),
-    UserItem(id: 'user_004', name: 'Dewi Lestari', email: 'dewi@example.com'),
-    UserItem(id: 'user_005', name: 'Ahmad Rizki', email: 'ahmad@example.com'),
-    UserItem(
-      id: 'user_006',
-      name: 'Fitri Handayani',
-      email: 'fitri@example.com',
-    ),
-    UserItem(id: 'user_007', name: 'Rudi Hermawan', email: 'rudi@example.com'),
-    UserItem(id: 'user_008', name: 'Maya Sari', email: 'maya@example.com'),
-    UserItem(id: 'user_009', name: 'Joko Susilo', email: 'joko@example.com'),
-    UserItem(id: 'user_010', name: 'Linda Kusuma', email: 'linda@example.com'),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchUsers();
+  }
+
+  Future<void> _fetchUsers() async {
+    try {
+      final supabaseService = Get.find<SupabaseService>();
+      final response = await supabaseService.client!
+          .from('profiles')
+          .select()
+          .order('full_name', ascending: true);
+
+      final users = (response as List)
+          .map((e) => UserProfile.fromMap(e))
+          .toList();
+
+      setState(() {
+        _allUsers = users;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error fetching users: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      Get.snackbar('Error', 'Gagal memuat daftar user');
+    }
+  }
 
   @override
   void dispose() {
@@ -52,14 +55,17 @@ class _AdminSelectUsersScreenState extends State<AdminSelectUsersScreen> {
     super.dispose();
   }
 
-  List<UserItem> get _filteredUsers {
+  List<UserProfile> get _filteredUsers {
     if (_searchQuery.isEmpty) {
       return _allUsers;
     }
     return _allUsers.where((user) {
       final query = _searchQuery.toLowerCase();
-      return user.name.toLowerCase().contains(query) ||
-          user.email.toLowerCase().contains(query);
+      final name = user.fullName.isNotEmpty
+          ? user.fullName
+          : (user.email ?? '');
+      return name.toLowerCase().contains(query) ||
+          (user.email ?? '').toLowerCase().contains(query);
     }).toList();
   }
 
@@ -194,7 +200,9 @@ class _AdminSelectUsersScreenState extends State<AdminSelectUsersScreen> {
 
           // User list
           Expanded(
-            child: _filteredUsers.isEmpty
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _filteredUsers.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -220,26 +228,38 @@ class _AdminSelectUsersScreenState extends State<AdminSelectUsersScreen> {
                     itemBuilder: (context, index) {
                       final user = _filteredUsers[index];
                       final isSelected = _selectedUserIds.contains(user.id);
+                      final displayName = user.fullName.isNotEmpty
+                          ? user.fullName
+                          : (user.email ?? 'User');
 
                       return CheckboxListTile(
                         value: isSelected,
                         onChanged: (value) => _toggleUserSelection(user.id),
                         title: Text(
-                          user.name,
+                          displayName,
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        subtitle: Text(user.email),
+                        subtitle: Text(user.email ?? '-'),
                         secondary: CircleAvatar(
                           backgroundColor: isSelected
                               ? theme.colorScheme.primary
                               : Colors.grey[300],
-                          child: Text(
-                            user.name[0].toUpperCase(),
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : Colors.black87,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          backgroundImage: user.avatarUrl != null
+                              ? NetworkImage(user.avatarUrl!)
+                              : null,
+                          child: user.avatarUrl == null
+                              ? Text(
+                                  displayName.isNotEmpty
+                                      ? displayName[0].toUpperCase()
+                                      : '?',
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Colors.black87,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                              : null,
                         ),
                         activeColor: theme.colorScheme.primary,
                       );

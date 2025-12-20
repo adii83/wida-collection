@@ -18,6 +18,7 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      fontFamily: GoogleFonts.poppins().fontFamily,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: lightBackground,
       textTheme: baseTextTheme.copyWith(
@@ -160,6 +161,7 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      fontFamily: GoogleFonts.poppins().fontFamily,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: darkBackground,
       textTheme: baseTextTheme.copyWith(

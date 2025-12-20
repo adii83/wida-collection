@@ -12,15 +12,16 @@ import '../widgets/benefit_tile.dart';
 import '../widgets/category_card.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/product_card.dart';
+
 import '../widgets/rounded_icon_button.dart';
+import '../widgets/custom_nav_bar.dart';
 import 'cart_screen.dart';
 import 'cloud_notes_screen.dart';
 import 'notification_center_screen.dart';
 import 'product_detail_screen.dart';
 import 'profile_screen.dart';
 import 'search_screen.dart';
-import 'location_center_screen.dart';
-import '../routes/app_routes.dart';
+
 import '../services/product_service.dart';
 import 'wishlist_screen.dart';
 
@@ -38,31 +39,6 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _currentIndex = index);
   }
 
-  Widget _navItem(IconData icon, String label, int index) {
-    final isActive = _currentIndex == index;
-
-    return InkWell(
-      onTap: () => setState(() => _currentIndex = index),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 30,
-            color: isActive ? const Color(0xFFFF5E9D) : Colors.grey,
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 16,
-              color: isActive ? const Color(0xFFFF5E9D) : Colors.grey,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final pages = [
@@ -71,7 +47,6 @@ class _HomeScreenState extends State<HomeScreen> {
       const CloudNotesScreen(),
       const NotificationCenterScreen(),
       const ProfileScreen(),
-      const LocationCenterScreen(),
     ];
 
     final theme = Theme.of(context);
@@ -79,48 +54,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final barColor = theme.colorScheme.surface;
 
     return Scaffold(
+      extendBody: true,
       body: IndexedStack(index: _currentIndex, children: pages),
-      // Floating button (tombol Location)
-      floatingActionButton: GestureDetector(
-        onTap: () => setState(() => _currentIndex = 5),
-        child: Container(
-          width: 70,
-          height: 70,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              colors: [Color(0xFFFF8FB1), Color(0xFFFF5E9D)],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFFF5E9D).withOpacity(0.25),
-                blurRadius: 12,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
-          child: const Icon(Icons.location_on, size: 34, color: Colors.white),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8.0,
-        child: SizedBox(
-          height: 70,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _navItem(Icons.home_filled, "Home", 0),
-              _navItem(Icons.favorite_border, "Wishlist", 1),
-              const SizedBox(width: 30),
-              _navItem(Icons.note_alt_outlined, "Catatan", 2),
-              _navItem(Icons.notifications_active_outlined, "Notif", 3),
-              _navItem(Icons.person, "Profile", 4),
-            ],
-          ),
-        ),
+      bottomNavigationBar: CustomNavBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
       ),
     );
   }

@@ -4,9 +4,13 @@ import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:googleapis_auth/auth_io.dart';
 import 'package:get/get.dart';
 
+import '../config/design_tokens.dart';
 import '../config/firebase_options.dart';
 import '../models/app_notification.dart';
 
@@ -18,23 +22,13 @@ typedef PayloadCallback =
       NotificationOrigin origin,
     );
 
-const AndroidNotificationChannel promoStatusChannel =
-    AndroidNotificationChannel(
-      'promo_status_channel',
-      'Promo & Order Alerts',
-      description: 'Heads-up notifications for promos dan status pesanan.',
-      importance: Importance.max,
-      playSound: true,
-      sound: RawResourceAndroidNotificationSound('natal'),
-    );
-
-const AndroidNotificationChannel customLabChannel = AndroidNotificationChannel(
-  'custom_lab_channel',
-  'Custom Notification',
-  description: 'Notifikasi lokal dari Custom Notification.',
-  importance: Importance.high,
+const AndroidNotificationChannel defaultChannel = AndroidNotificationChannel(
+  'default_channel',
+  'General Notifications',
+  description: 'Saluran utama untuk semua notifikasi aplikasi.',
+  importance: Importance.max,
   playSound: true,
-  sound: RawResourceAndroidNotificationSound('gopgopgop'),
+  sound: RawResourceAndroidNotificationSound('notif'),
 );
 
 class NotificationService extends GetxService {
@@ -104,8 +98,7 @@ class NotificationService extends GetxService {
           AndroidFlutterLocalNotificationsPlugin
         >();
     if (androidImpl != null) {
-      await androidImpl.createNotificationChannel(promoStatusChannel);
-      await androidImpl.createNotificationChannel(customLabChannel);
+      await androidImpl.createNotificationChannel(defaultChannel);
     }
     _localReady = true;
   }
@@ -171,20 +164,22 @@ class NotificationService extends GetxService {
     }
     final payload = jsonEncode(_buildPayload(message));
     final androidDetails = AndroidNotificationDetails(
-      promoStatusChannel.id,
-      promoStatusChannel.name,
-      channelDescription: promoStatusChannel.description,
+      defaultChannel.id,
+      defaultChannel.name,
+      channelDescription: defaultChannel.description,
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
-      sound: promoStatusChannel.sound,
-      ticker: 'Promo Update',
+      sound: defaultChannel.sound,
+      ticker: 'Wida Collection',
       icon: '@mipmap/ic_launcher',
+      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      color: AppColors.primaryPink,
     );
 
     final iosDetails = DarwinNotificationDetails(
       interruptionLevel: InterruptionLevel.timeSensitive,
-      sound: 'natal.mp3',
+      sound: 'notif.mp3',
     );
 
     await _localNotifications.show(
@@ -209,17 +204,19 @@ class NotificationService extends GetxService {
     final encodedPayload = jsonEncode(mergedPayload);
 
     final androidDetails = AndroidNotificationDetails(
-      customLabChannel.id,
-      customLabChannel.name,
-      channelDescription: customLabChannel.description,
+      defaultChannel.id,
+      defaultChannel.name,
+      channelDescription: defaultChannel.description,
       importance: Importance.high,
       priority: Priority.high,
       playSound: true,
-      sound: customLabChannel.sound,
+      sound: defaultChannel.sound,
       icon: '@mipmap/ic_launcher',
+      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      color: AppColors.primaryPink,
     );
 
-    final iosDetails = const DarwinNotificationDetails(sound: 'gopgopgop.mp3');
+    final iosDetails = const DarwinNotificationDetails(sound: 'notif.mp3');
 
     final notificationId = _toSigned32(id);
 
@@ -274,8 +271,7 @@ class NotificationService extends GetxService {
           AndroidFlutterLocalNotificationsPlugin
         >();
     if (androidImpl != null) {
-      await androidImpl.createNotificationChannel(promoStatusChannel);
-      await androidImpl.createNotificationChannel(customLabChannel);
+      await androidImpl.createNotificationChannel(defaultChannel);
     }
     final payload = <String, dynamic>{
       ...message.data,
@@ -290,19 +286,120 @@ class NotificationService extends GetxService {
       message.notification?.body ?? payload['body']?.toString(),
       NotificationDetails(
         android: AndroidNotificationDetails(
-          promoStatusChannel.id,
-          promoStatusChannel.name,
-          channelDescription: promoStatusChannel.description,
+          defaultChannel.id,
+          defaultChannel.name,
+          channelDescription: defaultChannel.description,
           importance: Importance.max,
           priority: Priority.high,
           playSound: true,
-          sound: promoStatusChannel.sound,
+          sound: defaultChannel.sound,
           icon: '@mipmap/ic_launcher',
+          largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+          color: AppColors.primaryPink,
         ),
-        iOS: const DarwinNotificationDetails(sound: 'natal.mp3'),
+        iOS: const DarwinNotificationDetails(sound: 'notif.mp3'),
       ),
       payload: jsonEncode(payload),
     );
+  } // --- SENDER LOGIC (Admin Feature) ---
+  // This essentially makes the app act as a Server/Backend.
+  // Requires 'assets/config/service-account.json' to be present.
+
+  Future<bool> sendFCMV1Message({
+    required List<String>
+    targetTokens, // If empty, sending to topic 'all' via condition if needed? Or just loop.
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+    String? predefinedTopic, // e.g. 'all_users'
+  }) async {
+    try {
+      final jsonString = await rootBundle.loadString(
+        'assets/config/service-account.json',
+      );
+      final jsonMap = jsonDecode(jsonString);
+      final credentials = ServiceAccountCredentials.fromJson(jsonString);
+      final projectId = jsonMap['project_id']; // Manual extraction
+
+      final client = await clientViaServiceAccount(credentials, [
+        'https://www.googleapis.com/auth/firebase.messaging',
+      ]);
+
+      final fcmEndpoint =
+          'https://fcm.googleapis.com/v1/projects/$projectId/messages:send';
+
+      // FCM V1 unfortunately doesn't support "multicast" (array of tokens) natively in one HTTP call like Legacy.
+      // We must loop or use topic.
+      // Strategy:
+      // - If topic is provided, send to topic.
+      // - If tokens provided, loop and send.
+
+      if (predefinedTopic != null) {
+        await _sendSingleV1(
+          client,
+          fcmEndpoint,
+          title,
+          body,
+          data,
+          topic: predefinedTopic,
+        );
+      } else {
+        // Send to each token
+        // In production, this should be batched or queued. For < 100 users demo, simple loop is fine.
+        for (final token in targetTokens) {
+          await _sendSingleV1(
+            client,
+            fcmEndpoint,
+            title,
+            body,
+            data,
+            token: token,
+          );
+        }
+      }
+
+      client.close();
+      return true;
+    } catch (e) {
+      debugPrint('FCM Sender Error: $e');
+      return false;
+    }
+  }
+
+  Future<void> _sendSingleV1(
+    AuthClient client,
+    String endpoint,
+    String title,
+    String body,
+    Map<String, dynamic>? data, {
+    String? token,
+    String? topic,
+  }) async {
+    final message = {
+      'message': {
+        if (token != null) 'token': token,
+        if (topic != null) 'topic': topic,
+        // We use data-only payload so we can manually display the notification
+        // with our custom sound and logic via onBackgroundMessage handler.
+        'data': {
+          'title': title,
+          'body': body,
+          ...?data, // spread any extra data
+        },
+      },
+    };
+
+    final response = await client.post(
+      Uri.parse(endpoint),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(message),
+    );
+
+    if (response.statusCode == 200) {
+      debugPrint('FCM Sent to ${token ?? topic}');
+    } else {
+      debugPrint('FCM Failed: ${response.statusCode} ${response.body}');
+    }
   }
 }
 

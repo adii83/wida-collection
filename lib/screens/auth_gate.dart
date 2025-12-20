@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
+import 'admin_dashboard_screen.dart';
 import 'auth_screen.dart';
 import 'home_screen.dart';
 
@@ -19,6 +20,9 @@ class AuthGate extends GetWidget<AuthController> {
       final user = controller.currentUser.value;
 
       if (user != null) {
+        if (controller.isAdmin) {
+          return const AdminDashboardScreen();
+        }
         return const HomeScreen();
       }
 

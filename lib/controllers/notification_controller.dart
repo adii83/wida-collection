@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
+import 'auth_controller.dart';
 
 import '../models/app_notification.dart';
 import '../models/product_model.dart';
@@ -16,6 +17,10 @@ class NotificationController extends GetxController {
 
   final NotificationService _service;
   final ProductService _productService;
+  // Inject AuthController lazily to avoid circular dependency issues during init if not careful,
+  // but Get.find is usually safe if AuthController is initialized before.
+  AuthController get _auth => Get.find<AuthController>();
+
   final notifications = <AppNotification>[].obs;
   final RxBool permissionGranted = false.obs;
   final RxnString fcmToken = RxnString();
@@ -35,6 +40,20 @@ class NotificationController extends GetxController {
     );
     _refreshPermissionStatus();
     refreshFcmToken();
+
+    // Work: Sync token when user logs in
+    ever(_auth.currentUser, (user) {
+      if (user != null && fcmToken.value != null) {
+        _auth.syncFcmToken(fcmToken.value!);
+      }
+    });
+
+    // Work: Sync token when token refreshes
+    ever(fcmToken, (token) {
+      if (token != null && _auth.isLoggedIn) {
+        _auth.syncFcmToken(token);
+      }
+    });
   }
 
   Future<void> _initHistory() async {

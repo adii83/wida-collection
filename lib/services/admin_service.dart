@@ -5,11 +5,13 @@ import '../models/order_model.dart';
 import '../models/refund_model.dart';
 import '../models/product_model.dart';
 import 'supabase_service.dart';
+import 'notification_service.dart';
 
 class AdminService extends GetxService {
-  AdminService(this._supabaseService);
+  AdminService(this._supabaseService, this._notificationService);
 
   final SupabaseService _supabaseService;
+  final NotificationService _notificationService;
 
   // Hardcoded admin credentials for demo (in production, use proper auth)
   static const Map<String, String> _adminCredentials = {
@@ -215,6 +217,7 @@ class AdminService extends GetxService {
   }) async {
     if (!isReady) return false;
     try {
+      // 1. Save to Database (History)
       await _supabaseService.client!.from('admin_notifications').insert({
         'title': title,
         'body': body,
@@ -222,6 +225,46 @@ class AdminService extends GetxService {
         'data': data,
         'created_at': DateTime.now().toIso8601String(),
       });
+
+      // 2. Fetch Target Tokens
+      List<String> tokens = [];
+      if (targetUserId != null && targetUserId.isNotEmpty) {
+        // Specific Users
+        final userIds = targetUserId.split(',');
+        final response = await _supabaseService.client!
+            .from('profiles')
+            .select('fcm_token')
+            .inFilter('id', userIds);
+
+        tokens = (response as List)
+            .map((e) => e['fcm_token'] as String?)
+            .where((t) => t != null && t.isNotEmpty)
+            .cast<String>()
+            .toList();
+      } else {
+        // All Users (Broadcast)
+        final response = await _supabaseService.client!
+            .from('profiles')
+            .select('fcm_token')
+            .not('fcm_token', 'is', null); // Fetch all non-null tokens
+
+        tokens = (response as List)
+            .map((e) => e['fcm_token'] as String?)
+            .where((t) => t != null && t.isNotEmpty)
+            .cast<String>()
+            .toList();
+      }
+
+      // 3. Send via FCM V1
+      if (tokens.isNotEmpty) {
+        await _notificationService.sendFCMV1Message(
+          targetTokens: tokens,
+          title: title,
+          body: body,
+          data: data,
+        );
+      }
+
       return true;
     } catch (e) {
       debugPrint('Send notification error: $e');

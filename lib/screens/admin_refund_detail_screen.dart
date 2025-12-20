@@ -269,7 +269,7 @@ class _AdminRefundDetailScreenState extends State<AdminRefundDetailScreen> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: selectedStatus,
+                      initialValue: selectedStatus,
                       decoration: InputDecoration(
                         labelText: 'Status Refund',
                         border: OutlineInputBorder(
