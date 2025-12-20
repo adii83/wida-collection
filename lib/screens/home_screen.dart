@@ -251,10 +251,16 @@ class _HomeLanding extends StatelessWidget {
                     );
                   }
                   if (products.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 32),
+                    final message = productService.lastError.value;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 32),
                       child: Center(
-                        child: Text('Produk belum tersedia. Coba segarkan.'),
+                        child: Text(
+                          message == null
+                              ? 'Produk belum tersedia. Coba segarkan.'
+                              : 'Gagal memuat produk: $message',
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     );
                   }

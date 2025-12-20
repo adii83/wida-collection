@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
 
 import '../data/dummy_products.dart';
 import '../models/product_model.dart';
@@ -14,11 +15,37 @@ class ProductService extends GetxService {
   final isLoading = false.obs;
   final RxnString lastError = RxnString();
 
+  RealtimeChannel? _productsChannel;
+  Timer? _productsRefreshDebounce;
+
   Future<void>? _inFlight;
 
   Future<ProductService> init() async {
     await fetchProducts();
+    _subscribeProducts();
     return this;
+  }
+
+  void _subscribeProducts() {
+    if (!_supabaseService.isReady) return;
+    final client = _supabaseService.client;
+    if (client == null) return;
+
+    _productsChannel?.unsubscribe();
+    _productsChannel = client.channel('public:products')
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'products',
+        callback: (_) {
+          _productsRefreshDebounce?.cancel();
+          _productsRefreshDebounce = Timer(
+            const Duration(milliseconds: 400),
+            () => fetchProducts(forceRefresh: true),
+          );
+        },
+      )
+      ..subscribe();
   }
 
   Future<List<Product>> fetchProducts({bool forceRefresh = false}) async {
@@ -96,5 +123,14 @@ class ProductService extends GetxService {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  @override
+  void onClose() {
+    _productsRefreshDebounce?.cancel();
+    _productsRefreshDebounce = null;
+    _productsChannel?.unsubscribe();
+    _productsChannel = null;
+    super.onClose();
   }
 }
