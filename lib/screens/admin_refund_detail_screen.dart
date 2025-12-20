@@ -194,7 +194,7 @@ class _AdminRefundDetailScreenState extends State<AdminRefundDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildInfoRow('Nama', refund.userName),
+                        _buildInfoRow('User ID', refund.userId),
                         _buildInfoRow('Order ID', refund.orderId),
                         _buildInfoRow(
                           'Jumlah Refund',
@@ -245,6 +245,47 @@ class _AdminRefundDetailScreenState extends State<AdminRefundDetailScreen> {
                 ],
               ),
             ),
+
+            // Proof Section (optional)
+            if ((refund.imageProofUrl ?? '').isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Bukti Refund',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: AspectRatio(
+                        aspectRatio: 16 / 9,
+                        child: Image.network(
+                          refund.imageProofUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[200],
+                              alignment: Alignment.center,
+                              child: const Text('Gagal memuat gambar'),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      refund.imageProofUrl!,
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
 
             // Update Status Section (hanya jika status pending)
             if (refund.status == 'pending')

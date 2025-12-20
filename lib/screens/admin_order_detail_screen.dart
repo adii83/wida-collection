@@ -44,6 +44,8 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
         return const Color(0xFF2196F3);
       case 'shipped':
         return const Color(0xFF4CAF50);
+      case 'delivered':
+        return const Color(0xFF2E7D32);
       default:
         return const Color(0xFF757575);
     }
@@ -54,8 +56,10 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
       case 'pending':
         return 'Dikemas';
       case 'processing':
-        return 'Dikirim';
+        return 'Diproses';
       case 'shipped':
+        return 'Dikirim';
+      case 'delivered':
         return 'Diterima';
       default:
         return status;
@@ -350,11 +354,16 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
                       ),
                       DropdownMenuItem(
                         value: 'processing',
-                        child: Text('Dikirim'),
+                        child: Text('Diproses'),
                       ),
                       DropdownMenuItem(
                         value: 'shipped',
-                        child: Text('Diterima'),
+                        child: Text('Dikirim'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'delivered',
+                        enabled: false,
+                        child: Text('Diterima (user)'),
                       ),
                     ],
                     onChanged: (value) {

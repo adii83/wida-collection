@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io';
 import '../models/admin_user.dart';
 import '../models/order_model.dart';
@@ -73,8 +74,8 @@ class AdminService extends GetxService {
   // Product Management
   Future<bool> addProduct(Product product) async {
     if (!isReady) return false;
+    var imageValue = product.image;
     try {
-      var imageValue = product.image;
       if (!kIsWeb && imageValue.isNotEmpty) {
         final file = File(imageValue);
         if (file.existsSync()) {
@@ -94,10 +95,39 @@ class AdminService extends GetxService {
         'name': product.name,
         'image': imageValue,
         'price': product.price,
+        'category': product.category,
         'description': product.description,
         'created_at': DateTime.now().toIso8601String(),
       });
       return true;
+    } on PostgrestException catch (e) {
+      // If DB schema doesn't have `category`, retry without it.
+      final msg = '${e.message} ${e.details ?? ''} ${e.hint ?? ''}'
+          .toLowerCase();
+      final looksLikeMissingCategory =
+          msg.contains('category') &&
+          (msg.contains('column') ||
+              msg.contains('not found') ||
+              msg.contains('schema cache') ||
+              e.code == 'PGRST204');
+      if (!looksLikeMissingCategory) {
+        debugPrint('Add product error: $e');
+        return false;
+      }
+      try {
+        await _supabaseService.client!.from('products').insert({
+          'id': product.id,
+          'name': product.name,
+          'image': imageValue,
+          'price': product.price,
+          'description': product.description,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+        return true;
+      } catch (e2) {
+        debugPrint('Add product error: $e2');
+        return false;
+      }
     } catch (e) {
       debugPrint('Add product error: $e');
       return false;
@@ -106,8 +136,8 @@ class AdminService extends GetxService {
 
   Future<bool> updateProduct(Product product) async {
     if (!isReady) return false;
+    var imageValue = product.image;
     try {
-      var imageValue = product.image;
       if (!kIsWeb && imageValue.isNotEmpty) {
         final file = File(imageValue);
         if (file.existsSync()) {
@@ -128,11 +158,41 @@ class AdminService extends GetxService {
             'name': product.name,
             'image': imageValue,
             'price': product.price,
+            'category': product.category,
             'description': product.description,
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', product.id);
       return true;
+    } on PostgrestException catch (e) {
+      final msg = '${e.message} ${e.details ?? ''} ${e.hint ?? ''}'
+          .toLowerCase();
+      final looksLikeMissingCategory =
+          msg.contains('category') &&
+          (msg.contains('column') ||
+              msg.contains('not found') ||
+              msg.contains('schema cache') ||
+              e.code == 'PGRST204');
+      if (!looksLikeMissingCategory) {
+        debugPrint('Update product error: $e');
+        return false;
+      }
+      try {
+        await _supabaseService.client!
+            .from('products')
+            .update({
+              'name': product.name,
+              'image': imageValue,
+              'price': product.price,
+              'description': product.description,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', product.id);
+        return true;
+      } catch (e2) {
+        debugPrint('Update product error: $e2');
+        return false;
+      }
     } catch (e) {
       debugPrint('Update product error: $e');
       return false;
@@ -227,6 +287,7 @@ class AdminService extends GetxService {
           .from('refunds')
           .select()
           .order('requested_at', ascending: false);
+
       return (data as List<dynamic>)
           .map((json) => RefundModel.fromJson(Map<String, dynamic>.from(json)))
           .toList();
@@ -244,7 +305,9 @@ class AdminService extends GetxService {
   }) async {
     if (!isReady) return false;
     try {
-      final updated = await _supabaseService.client!
+      final client = _supabaseService.client!;
+
+      final updated = await client
           .from('refunds')
           .update({
             'status': status,
@@ -259,13 +322,12 @@ class AdminService extends GetxService {
 
       // If approved, update order payment status
       if (status == 'approved') {
-        final refund = await _supabaseService.client!
+        final refund = await client
             .from('refunds')
-            .select()
+            .select('order_id')
             .eq('id', refundId)
             .single();
-
-        await updatePaymentStatus(refund['order_id'], 'refunded');
+        await updatePaymentStatus(refund['order_id'].toString(), 'refunded');
       }
 
       return true;
@@ -284,24 +346,60 @@ class AdminService extends GetxService {
   }) async {
     if (!isReady) return false;
     try {
+      List<String> parseTargetUserIds(String? raw) {
+        if (raw == null) return const [];
+        final cleaned = raw.trim();
+        if (cleaned.isEmpty) return const [];
+
+        // Accept comma / whitespace separated ids.
+        final parts = cleaned
+            .split(RegExp(r'[\s,]+'))
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        final uuidRegex = RegExp(
+          r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+        );
+        return parts.where((id) => uuidRegex.hasMatch(id)).toList();
+      }
+
+      final targetUserIds = parseTargetUserIds(targetUserId);
+
       // 1. Save to Database (History)
-      await _supabaseService.client!.from('admin_notifications').insert({
-        'title': title,
-        'body': body,
-        'target_user_id': targetUserId,
-        'data': data,
-        'created_at': DateTime.now().toIso8601String(),
-      });
+      if (targetUserIds.isEmpty) {
+        // Broadcast
+        await _supabaseService.client!.from('admin_notifications').insert({
+          'title': title,
+          'body': body,
+          'target_user_id': null,
+          'data': data,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      } else {
+        // One row per target user (target_user_id is UUID in DB)
+        final rows = targetUserIds
+            .map(
+              (id) => {
+                'title': title,
+                'body': body,
+                'target_user_id': id,
+                'data': data,
+                'created_at': DateTime.now().toIso8601String(),
+              },
+            )
+            .toList();
+        await _supabaseService.client!.from('admin_notifications').insert(rows);
+      }
 
       // 2. Fetch Target Tokens
       List<String> tokens = [];
-      if (targetUserId != null && targetUserId.isNotEmpty) {
+      if (targetUserIds.isNotEmpty) {
         // Specific Users
-        final userIds = targetUserId.split(',');
         final response = await _supabaseService.client!
             .from('profiles')
             .select('fcm_token')
-            .inFilter('id', userIds);
+            .inFilter('id', targetUserIds);
 
         tokens = (response as List)
             .map((e) => e['fcm_token'] as String?)
@@ -351,16 +449,109 @@ class AdminService extends GetxService {
     }
 
     try {
-      final orders = await fetchAllOrders();
-      final refunds = await fetchAllRefunds();
+      final client = _supabaseService.client!;
+
+      // Preferred: compute statistics on the server (single RPC), so results match
+      // what Supabase sees and are not affected by max-rows limits.
+      try {
+        final rpc = await client.rpc('get_admin_statistics');
+        Map<String, dynamic>? map;
+        if (rpc is Map) {
+          map = Map<String, dynamic>.from(rpc);
+        } else if (rpc is List && rpc.isNotEmpty && rpc.first is Map) {
+          map = Map<String, dynamic>.from(rpc.first as Map);
+        }
+
+        if (map != null && map.isNotEmpty) {
+          final totalOrders = (map['total_orders'] as num?)?.toInt() ?? 0;
+          final pendingOrders = (map['pending_orders'] as num?)?.toInt() ?? 0;
+          final totalRevenue =
+              (map['total_revenue'] as num?)?.toDouble() ?? 0.0;
+          final pendingRefunds = (map['pending_refunds'] as num?)?.toInt() ?? 0;
+
+          return {
+            'total_orders': totalOrders,
+            'pending_orders': pendingOrders,
+            'total_revenue': totalRevenue,
+            'pending_refunds': pendingRefunds,
+          };
+        }
+      } on PostgrestException catch (_) {
+        // If the RPC does not exist (or not allowed yet), fall back to client-side pagination.
+      } catch (_) {
+        // Any other rpc decoding issues: fall back.
+      }
+
+      // IMPORTANT:
+      // PostgREST may enforce a max-rows limit. A plain `.select()` can be truncated
+      // and cause dashboard numbers to be out-of-sync. We paginate to ensure counts
+      // and sums reflect the real DB totals.
+
+      const pageSize = 1000;
+      const maxPages = 200; // safety guard (200k rows)
+
+      int totalOrders = 0;
+      int pendingOrders = 0;
+      double totalRevenue = 0.0;
+
+      for (int pageIndex = 0; pageIndex < maxPages; pageIndex++) {
+        final from = pageIndex * pageSize;
+        final to = from + pageSize - 1;
+        final rows = await client
+            .from('orders')
+            .select('status, payment_status, total_amount')
+            .range(from, to);
+
+        final list = rows as List<dynamic>;
+        if (list.isEmpty) break;
+
+        totalOrders += list.length;
+
+        for (final row in list) {
+          final map = Map<String, dynamic>.from(row as Map);
+          final status = (map['status'] as String? ?? '').toLowerCase();
+          final paymentStatus = (map['payment_status'] as String? ?? '')
+              .toLowerCase();
+
+          if (status == 'pending') pendingOrders += 1;
+
+          // Revenue counts only truly paid orders. Refund flow switches payment_status
+          // to 'refunded', so refunded orders are excluded automatically.
+          if (paymentStatus == 'paid') {
+            final amount = map['total_amount'];
+            if (amount is num) totalRevenue += amount.toDouble();
+          }
+        }
+
+        if (list.length < pageSize) break;
+      }
+
+      int pendingRefunds = 0;
+      for (int pageIndex = 0; pageIndex < maxPages; pageIndex++) {
+        final from = pageIndex * pageSize;
+        final to = from + pageSize - 1;
+        final rows = await client
+            .from('refunds')
+            .select('status')
+            .range(from, to);
+
+        final list = rows as List<dynamic>;
+        if (list.isEmpty) break;
+
+        for (final row in list) {
+          final map = Map<String, dynamic>.from(row as Map);
+          final status = (map['status'] as String? ?? '').toLowerCase();
+          if (status == 'pending') pendingRefunds += 1;
+        }
+
+        if (list.length < pageSize) break;
+      }
 
       return {
-        'total_orders': orders.length,
-        'pending_orders': orders.where((o) => o.status == 'pending').length,
-        'total_revenue': orders
-            .where((o) => o.paymentStatus == 'paid')
-            .fold(0.0, (sum, order) => sum + order.totalAmount),
-        'pending_refunds': refunds.where((r) => r.status == 'pending').length,
+        'total_orders': totalOrders,
+        'pending_orders': pendingOrders,
+        'total_revenue': totalRevenue,
+        'pending_refunds': pendingRefunds,
       };
     } catch (e) {
       debugPrint('Get statistics error: $e');

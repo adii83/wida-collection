@@ -6,11 +6,15 @@ import 'package:image_picker/image_picker.dart';
 import '../config/design_tokens.dart';
 import '../config/layout_values.dart';
 import '../controllers/auth_controller.dart';
+import '../controllers/user_orders_controller.dart';
+import '../controllers/wishlist_controller.dart';
+import '../services/supabase_service.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/rounded_icon_button.dart';
 import '../widgets/success_dialog.dart';
 import 'auth_screen.dart';
 import 'wishlist_screen.dart';
+import 'user_orders_screen.dart';
 import 'edit_profile_screen.dart';
 import 'auth_gate.dart';
 
@@ -23,6 +27,35 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final auth = Get.find<AuthController>();
+  late final UserOrdersController _ordersController;
+  late final WishlistController _wishlistController;
+  Worker? _authWorker;
+
+  @override
+  void initState() {
+    super.initState();
+    _wishlistController = Get.find<WishlistController>();
+    _ordersController =
+        Get.isRegistered<UserOrdersController>(tag: 'user-orders')
+        ? Get.find<UserOrdersController>(tag: 'user-orders')
+        : Get.put(
+            UserOrdersController(Get.find<SupabaseService>()),
+            tag: 'user-orders',
+          );
+
+    // Keep profile order summary synced with auth changes.
+    _ordersController.fetchMyOrders();
+    _authWorker = ever(
+      auth.currentUser,
+      (_) => _ordersController.fetchMyOrders(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _authWorker?.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -275,14 +308,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     );
                   }),
                   const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: const [
-                      _ProfileStat(label: 'Pesanan', value: '12'),
-                      _ProfileStat(label: 'Dikirim', value: '1'),
-                      _ProfileStat(label: 'Wishlist', value: '8'),
-                    ],
-                  ),
+                  Obx(() {
+                    final orders = _ordersController.orders;
+                    final totalOrders = orders.length;
+                    final shippedCount = orders
+                        .where((o) => o.status.toLowerCase() == 'shipped')
+                        .length;
+                    final wishlistCount = _wishlistController.wishlist.length;
+
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _ProfileStat(label: 'Pesanan', value: '$totalOrders'),
+                        _ProfileStat(label: 'Dikirim', value: '$shippedCount'),
+                        _ProfileStat(
+                          label: 'Wishlist',
+                          value: '$wishlistCount',
+                        ),
+                      ],
+                    );
+                  }),
                 ],
               ),
             ),
@@ -302,7 +347,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.inventory_2_outlined,
                     title: 'Pesanan Saya',
                     subtitle: 'Cek riwayat pembelian',
-                    onTap: () => Get.snackbar('Info', 'Belum ada pesanan baru'),
+                    onTap: () => Get.to(() => const UserOrdersScreen()),
                   ),
                   AppSpacing.vItem,
                   _MenuTile(
@@ -310,16 +355,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     title: 'Wishlist',
                     subtitle: 'Lihat item favoritmu',
                     onTap: () => Get.to(() => const WishlistScreen()),
-                  ),
-                  const SizedBox(height: 12),
-                  _MenuTile(
-                    icon: Icons.settings,
-                    title: 'Pengaturan',
-                    subtitle: 'Mode gelap, bahasa, keamanan',
-                    onTap: () => Get.snackbar(
-                      'Info',
-                      'Pengaturan lanjutan tersedia di halaman tema',
-                    ),
                   ),
                 ],
               ),
@@ -335,23 +370,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                   ),
                   AppSpacing.vItem,
-                  _OrderTile(
-                    statusLabel: 'Dikirim',
-                    statusColor: AppColors.primaryPink,
-                    orderId: '#THF12345678',
-                    date: '20 Nov 2025',
-                    total: 'Rp 334.000',
-                    items: '2 items',
-                  ),
-                  const SizedBox(height: 12),
-                  _OrderTile(
-                    statusLabel: 'Selesai',
-                    statusColor: AppColors.success,
-                    orderId: '#THF12345679',
-                    date: '15 Nov 2025',
-                    total: 'Rp 149.000',
-                    items: '1 item',
-                  ),
+                  Obx(() {
+                    if (_ordersController.isLoading.value &&
+                        _ordersController.orders.isEmpty) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    final orders = _ordersController.orders;
+                    if (orders.isEmpty) {
+                      return Text(
+                        auth.isLoggedIn
+                            ? 'Belum ada pesanan.'
+                            : 'Login untuk melihat riwayat pesanan.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.softGray,
+                        ),
+                      );
+                    }
+
+                    final recent = orders.take(2).toList();
+                    return Column(
+                      children: [
+                        for (int i = 0; i < recent.length; i++) ...[
+                          GestureDetector(
+                            onTap: () => Get.to(() => const UserOrdersScreen()),
+                            child: _OrderTile(
+                              statusLabel: _statusLabel(recent[i].status),
+                              statusColor: _statusColor(recent[i].status),
+                              orderId: '#${_shortOrderId(recent[i].id)}',
+                              date: _formatDate(recent[i].createdAt),
+                              total:
+                                  'Rp ${recent[i].totalAmount.toStringAsFixed(0)}',
+                              items: '${_totalItems(recent[i])} items',
+                            ),
+                          ),
+                          if (i != recent.length - 1)
+                            const SizedBox(height: 12),
+                        ],
+                      ],
+                    );
+                  }),
                 ],
               ),
             ),
@@ -381,6 +439,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   String _initial(String text) => text.isEmpty ? 'W' : text[0].toUpperCase();
+
+  String _shortOrderId(String id) {
+    if (id.length <= 8) return id.toUpperCase();
+    return id.substring(0, 8).toUpperCase();
+  }
+
+  String _formatDate(DateTime value) {
+    final local = value.toLocal();
+    return '${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')}';
+  }
+
+  int _totalItems(dynamic order) {
+    try {
+      // order is OrderModel, but keep it tolerant to avoid extra imports here.
+      final items = order.items as List;
+      int sum = 0;
+      for (final it in items) {
+        sum += (it.quantity as int);
+      }
+      return sum;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  String _statusLabel(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return 'Menunggu';
+      case 'processing':
+        return 'Diproses';
+      case 'shipped':
+        return 'Dikirim';
+      case 'delivered':
+        return 'Diterima';
+      case 'cancelled':
+        return 'Dibatalkan';
+      default:
+        return status;
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Colors.orange;
+      case 'processing':
+        return Colors.blue;
+      case 'shipped':
+        return AppColors.primaryPink;
+      case 'delivered':
+        return AppColors.success;
+      case 'cancelled':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
 }
 
 class _ProfileStat extends StatelessWidget {

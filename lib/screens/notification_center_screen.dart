@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 import '../controllers/notification_controller.dart';
@@ -26,98 +25,36 @@ class NotificationCenterScreen extends GetView<NotificationController> {
               tooltip: 'Bersihkan semua',
             ),
           ),
-          IconButton(
-            onPressed: controller.refreshFcmToken,
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh token',
-          ),
         ],
       ),
-      body: Obx(
-        () => ListView(
+      body: Obx(() {
+        final visibleNotifications = controller.notifications
+            .where((entry) => entry.data['origin'] != 'local')
+            .toList();
+
+        return ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _buildTokenCard(context),
-            const SizedBox(height: 12),
-            _PayloadSampleCard(),
-            const SizedBox(height: 12),
-            const _CustomNotificationCard(),
-            const SizedBox(height: 16),
-            if (controller.notifications.isEmpty)
+            if (visibleNotifications.isEmpty)
               _EmptyState(permissionGranted: controller.permissionGranted.value)
             else
-              ...controller.notifications.map((entry) {
-                final isCustom =
-                    entry.data['origin'] == 'local' && entry.productId == null;
-                return _NotificationTile(
+              ...visibleNotifications.map(
+                (entry) => _NotificationTile(
                   entry: entry,
-                  isCustom: isCustom,
-                  onTap: isCustom ? null : () => controller.openEntry(entry),
-                );
-              }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTokenCard(BuildContext context) {
-    final token = controller.fcmToken.value ?? 'Belum tersedia';
-    final granted = controller.permissionGranted.value;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.notifications_active),
-                const SizedBox(width: 8),
-                Text(
-                  granted
-                      ? 'Izin notifikasi aktif'
-                      : 'Izin notifikasi belum diberikan',
-                  style: Theme.of(context).textTheme.titleMedium,
+                  onTap: () => controller.openEntry(entry),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text('FCM Token', style: Theme.of(context).textTheme.labelLarge),
-            const SizedBox(height: 4),
-            SelectableText(token, style: const TextStyle(fontSize: 13)),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: controller.fcmToken.value == null
-                    ? null
-                    : () {
-                        Clipboard.setData(ClipboardData(text: token));
-                        Get.snackbar(
-                          'Token disalin',
-                          'Gunakan token ini di Firebase Console',
-                        );
-                      },
-                icon: const Icon(Icons.copy, size: 16),
-                label: const Text('Salin token'),
               ),
-            ),
           ],
-        ),
-      ),
+        );
+      }),
     );
   }
 }
 
 class _NotificationTile extends StatelessWidget {
-  const _NotificationTile({
-    required this.entry,
-    required this.isCustom,
-    this.onTap,
-  });
+  const _NotificationTile({required this.entry, this.onTap});
 
   final AppNotification entry;
-  final bool isCustom;
   final VoidCallback? onTap;
 
   @override
@@ -125,19 +62,13 @@ class _NotificationTile extends StatelessWidget {
     final localDate = entry.receivedAt.toLocal();
     final dateLabel =
         '${localDate.year}-${localDate.month.toString().padLeft(2, '0')}-${localDate.day.toString().padLeft(2, '0')}';
-    final badgeColor = isCustom
-        ? Colors.pinkAccent
-        : entry.type == NotificationType.promo
+    final badgeColor = entry.type == NotificationType.promo
         ? Colors.pinkAccent
         : entry.type == NotificationType.orderStatus
         ? Colors.teal
         : Colors.grey;
-    final dateColor = isCustom
-        ? const Color.fromARGB(255, 169, 169, 169)
-        : const Color.fromARGB(255, 169, 169, 169);
-    final iconData = isCustom
-        ? Icons.notifications_active
-        : entry.type == NotificationType.promo
+    const dateColor = Color.fromARGB(255, 169, 169, 169);
+    final iconData = entry.type == NotificationType.promo
         ? Icons.local_offer
         : entry.type == NotificationType.orderStatus
         ? Icons.inventory_2
@@ -185,88 +116,9 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               permissionGranted
-                  ? 'Belum ada notifikasi terbaru. Kirim pesan dari Firebase Console untuk mulai eksperimen.'
-                  : 'Izin notifikasi belum aktif. Izinkan notifikasi pada dialog Android 13+ lalu ulangi.',
+                  ? 'Belum ada notifikasi terbaru.'
+                  : 'Izin notifikasi belum aktif. Aktifkan notifikasi di pengaturan perangkat.',
               textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PayloadSampleCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    const sample =
-        '{\n  "title": "Promo Payday 50%",\n  "body": "Voucher khusus loyal customer",\n  "type": "promo",\n  "productId": "p1"\n}';
-    return Card(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              'Format Payload FCM',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Kirim sebagai Data Message via Firebase Console:',
-              style: TextStyle(fontSize: 13),
-            ),
-            SizedBox(height: 8),
-            SelectableText(sample, style: TextStyle(fontFamily: 'monospace')),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CustomNotificationCard extends StatelessWidget {
-  const _CustomNotificationCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = Get.find<NotificationController>();
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: const [
-                Icon(Icons.music_note, color: Colors.pinkAccent),
-                SizedBox(width: 8),
-                Text(
-                  'Custom Notification',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text('Ayo, Test Notifikasi khusus dengan suara menarik!!!'),
-            const SizedBox(height: 12),
-            Obx(
-              () => ElevatedButton.icon(
-                onPressed: controller.isCustomNotifying.value
-                    ? null
-                    : controller.triggerCustomNotification,
-                icon: Icon(
-                  controller.isCustomNotifying.value
-                      ? Icons.hourglass_top
-                      : Icons.play_arrow,
-                ),
-                label: Text(
-                  controller.isCustomNotifying.value
-                      ? 'Mengirim notifikasi...'
-                      : 'Play Custom Notification',
-                ),
-              ),
             ),
           ],
         ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
@@ -6,8 +8,10 @@ import '../config/design_tokens.dart';
 import '../config/layout_values.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/cart_controller.dart';
+import '../controllers/user_orders_controller.dart';
 import '../models/cart_item.dart';
 import '../models/order_model.dart';
+import '../services/product_service.dart';
 import '../services/supabase_service.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/rounded_icon_button.dart';
@@ -98,6 +102,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final profile = auth.profile.value;
       final profileName = (profile?.fullName ?? '').trim();
 
+      // Ensure any public (FakeStore) products used in this order
+      // are also present in Supabase `products`.
+      try {
+        final productService = Get.find<ProductService>();
+        for (final ci in widget.items) {
+          await productService.ensurePublicProductInSupabase(ci.product);
+        }
+      } catch (_) {
+        // best-effort; do not block checkout
+      }
+
       final orderItems = widget.items
           .map(
             (ci) => OrderItem(
@@ -141,6 +156,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           snackPosition: SnackPosition.BOTTOM,
         );
         return;
+      }
+
+      // Keep order history screens in sync.
+      if (Get.isRegistered<UserOrdersController>(tag: 'user-orders')) {
+        unawaited(
+          Get.find<UserOrdersController>(tag: 'user-orders').fetchMyOrders(),
+        );
       }
 
       // Clear cart after successful order creation

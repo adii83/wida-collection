@@ -35,7 +35,7 @@ class OrderModel {
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     return OrderModel(
       id: json['id'] as String,
-      userId: json['user_id'] as String,
+      userId: (json['user_id'] ?? json['owner']) as String,
       userName: json['user_name'] as String? ?? 'Guest',
       userEmail: json['user_email'] as String? ?? '',
       items: (json['items'] as List<dynamic>)

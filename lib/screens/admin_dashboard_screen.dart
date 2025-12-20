@@ -213,7 +213,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 title: 'Kelola Produk',
                 subtitle: 'Tambah, edit, dan hapus produk',
                 color: Colors.purple,
-                onTap: () => Get.to(() => const AdminProductManagementScreen()),
+                onTap: () {
+                  Get.to(
+                    () => const AdminProductManagementScreen(),
+                  )?.then((_) => _loadStatistics());
+                },
               ),
               const SizedBox(height: 12),
               _buildMenuCard(
@@ -222,7 +226,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 title: 'Kelola Order',
                 subtitle: 'Update status dan tracking order',
                 color: Colors.blue,
-                onTap: () => Get.to(() => const AdminOrderManagementScreen()),
+                onTap: () {
+                  Get.to(
+                    () => const AdminOrderManagementScreen(),
+                  )?.then((_) => _loadStatistics());
+                },
               ),
               const SizedBox(height: 12),
               _buildMenuCard(
@@ -231,7 +239,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 title: 'Kelola Refund',
                 subtitle: 'Proses permintaan refund',
                 color: Colors.red,
-                onTap: () => Get.to(() => const AdminRefundManagementScreen()),
+                onTap: () {
+                  Get.to(
+                    () => const AdminRefundManagementScreen(),
+                  )?.then((_) => _loadStatistics());
+                },
               ),
               const SizedBox(height: 12),
               _buildMenuCard(
@@ -240,7 +252,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 title: 'Kirim Notifikasi',
                 subtitle: 'Kirim notifikasi ke pengguna',
                 color: Colors.orange,
-                onTap: () => Get.to(() => const AdminNotificationScreen()),
+                onTap: () {
+                  Get.to(
+                    () => const AdminNotificationScreen(),
+                  )?.then((_) => _loadStatistics());
+                },
               ),
             ],
           ),

@@ -4,6 +4,7 @@ import '../models/cart_item_model.dart';
 import '../models/product_model.dart';
 import '../models/wishlist_item.dart';
 import '../services/hive_service.dart';
+import '../services/product_service.dart';
 import '../services/supabase_service.dart';
 import 'auth_controller.dart';
 
@@ -46,6 +47,14 @@ class CartController extends GetxController {
   }
 
   Future<void> addItem(Product product, {int quantity = 1}) async {
+    // If product comes from public API, make sure it also exists in Supabase
+    // so orders/wishlist can reference it consistently.
+    try {
+      await Get.find<ProductService>().ensurePublicProductInSupabase(product);
+    } catch (_) {
+      // ignore (best-effort)
+    }
+
     final owner = _auth.currentUser.value?.id ?? HiveOwnerKeys.local;
     // Check existing
     CartItemModel? existing;
@@ -133,6 +142,20 @@ class CartController extends GetxController {
         .toList();
     for (final item in localItems) {
       try {
+        // Persist public product into Supabase products table if needed.
+        try {
+          await Get.find<ProductService>().ensurePublicProductInSupabase(
+            Product(
+              id: item.productId,
+              name: item.name,
+              image: item.image,
+              price: item.price,
+            ),
+          );
+        } catch (_) {
+          // ignore (best-effort)
+        }
+
         final serverItem = await _supabaseService.upsertCartItem(item, owner);
         if (serverItem != null) {
           final updated = item.copyWith(

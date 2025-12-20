@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:get/get.dart';
 import '../models/admin_user.dart';
 import '../models/product_model.dart';
 import '../services/admin_service.dart';
 import '../services/supabase_service.dart';
+import '../services/product_service.dart';
 
 class AdminController extends GetxController {
   AdminController(this._adminService);
@@ -96,6 +99,11 @@ class AdminController extends GetxController {
       isLoading.value = true;
       final success = await _adminService.addProduct(product);
       if (success) {
+        // Best-effort: ensure user-facing product list picks up the new row
+        // even if Supabase Realtime is disabled/misconfigured.
+        if (Get.isRegistered<ProductService>()) {
+          unawaited(Get.find<ProductService>().refresh());
+        }
         Get.snackbar('Sukses', 'Produk berhasil ditambahkan');
         return true;
       }
@@ -122,6 +130,9 @@ class AdminController extends GetxController {
       isLoading.value = true;
       final success = await _adminService.updateProduct(product);
       if (success) {
+        if (Get.isRegistered<ProductService>()) {
+          unawaited(Get.find<ProductService>().refresh());
+        }
         Get.snackbar('Sukses', 'Produk berhasil diupdate');
         return true;
       }
@@ -148,6 +159,9 @@ class AdminController extends GetxController {
       isLoading.value = true;
       final success = await _adminService.deleteProduct(productId);
       if (success) {
+        if (Get.isRegistered<ProductService>()) {
+          unawaited(Get.find<ProductService>().refresh());
+        }
         Get.snackbar('Sukses', 'Produk berhasil dihapus');
         return true;
       } else {

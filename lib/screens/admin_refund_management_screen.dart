@@ -198,7 +198,7 @@ class _AdminRefundManagementScreenState
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    refund.userName,
+                                    refund.userId,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 12,

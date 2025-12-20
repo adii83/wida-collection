@@ -18,6 +18,7 @@ class _AdminAddProductScreenState extends State<AdminAddProductScreen> {
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
   final _descriptionController = TextEditingController();
+  String? _selectedCategory;
   File? _selectedImage;
   final _imagePicker = ImagePicker();
   bool _isLoading = false;
@@ -79,6 +80,7 @@ class _AdminAddProductScreenState extends State<AdminAddProductScreen> {
         description: _descriptionController.text,
         price: double.parse(_priceController.text),
         image: _selectedImage!.path,
+        category: (_selectedCategory ?? '').trim(),
       );
 
       final success = await adminController.addProduct(newProduct);
@@ -230,6 +232,36 @@ class _AdminAddProductScreenState extends State<AdminAddProductScreen> {
                   }
                   if (double.tryParse(value) == null) {
                     return 'Harga harus berupa angka';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // Product Category
+              const Text(
+                'Kategori Produk',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: _selectedCategory,
+                decoration: InputDecoration(
+                  hintText: 'Pilih kategori',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  prefixIcon: const Icon(Icons.category),
+                ),
+                items: ProductCategories.values
+                    .map(
+                      (c) => DropdownMenuItem<String>(value: c, child: Text(c)),
+                    )
+                    .toList(),
+                onChanged: (value) => setState(() => _selectedCategory = value),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Kategori wajib dipilih';
                   }
                   return null;
                 },

@@ -21,6 +21,7 @@ class _AdminProductDetailScreenState extends State<AdminProductDetailScreen> {
   late TextEditingController _nameController;
   late TextEditingController _priceController;
   late TextEditingController _descriptionController;
+  late String _selectedCategory;
   late Product _currentProduct;
   File? _selectedImage;
   final _formKey = GlobalKey<FormState>();
@@ -38,6 +39,7 @@ class _AdminProductDetailScreenState extends State<AdminProductDetailScreen> {
     _descriptionController = TextEditingController(
       text: _currentProduct.description,
     );
+    _selectedCategory = _currentProduct.resolvedCategory;
   }
 
   @override
@@ -75,6 +77,7 @@ class _AdminProductDetailScreenState extends State<AdminProductDetailScreen> {
         price: double.parse(_priceController.text),
         image: imagePath,
         description: _descriptionController.text,
+        category: _selectedCategory,
       );
 
       final ok = await _adminController.updateProduct(updatedProduct);
@@ -250,6 +253,30 @@ class _AdminProductDetailScreenState extends State<AdminProductDetailScreen> {
                       keyboardType: TextInputType.number,
                       validator: (value) =>
                           value?.isEmpty ?? true ? 'Harga wajib diisi' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    // Product Category Field
+                    DropdownButtonFormField<String>(
+                      value: _selectedCategory,
+                      decoration: InputDecoration(
+                        labelText: 'Kategori Produk',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        prefixIcon: const Icon(Icons.category),
+                      ),
+                      items: ProductCategories.values
+                          .map(
+                            (c) => DropdownMenuItem<String>(
+                              value: c,
+                              child: Text(c),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _selectedCategory = value);
+                      },
                     ),
                     const SizedBox(height: 16),
                     // Product Description Field

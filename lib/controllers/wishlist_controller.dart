@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../models/product_model.dart';
 import '../models/wishlist_item.dart';
 import '../services/hive_service.dart';
+import '../services/product_service.dart';
 import '../services/supabase_service.dart';
 import 'auth_controller.dart';
 
@@ -48,6 +49,14 @@ class WishlistController extends GetxController {
   }
 
   Future<void> toggleWishlist(Product product) async {
+    // Best-effort: ensure public product exists in Supabase `products`.
+    // This does not delete/override admin products.
+    try {
+      await Get.find<ProductService>().ensurePublicProductInSupabase(product);
+    } catch (_) {
+      // ignore
+    }
+
     WishlistItem? existing;
     for (final item in wishlist) {
       if (item.productId == product.id) {

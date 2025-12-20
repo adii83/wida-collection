@@ -2,7 +2,6 @@ class RefundModel {
   final String id;
   final String orderId;
   final String userId;
-  final String userName;
   final double refundAmount;
   final String reason;
   final String status; // 'pending', 'approved', 'rejected', 'processed'
@@ -10,12 +9,12 @@ class RefundModel {
   final DateTime? processedAt;
   final String? adminNotes;
   final String? processedBy;
+  final String? imageProofUrl;
 
   RefundModel({
     required this.id,
     required this.orderId,
     required this.userId,
-    required this.userName,
     required this.refundAmount,
     required this.reason,
     required this.status,
@@ -23,23 +22,29 @@ class RefundModel {
     this.processedAt,
     this.adminNotes,
     this.processedBy,
+    this.imageProofUrl,
   });
 
   factory RefundModel.fromJson(Map<String, dynamic> json) {
+    final amountRaw = json['amount'];
+    final amount = (amountRaw is num)
+        ? amountRaw.toDouble()
+        : double.tryParse(amountRaw?.toString() ?? '') ?? 0.0;
+
     return RefundModel(
-      id: json['id'] as String,
-      orderId: json['order_id'] as String,
-      userId: json['user_id'] as String,
-      userName: json['user_name'] as String? ?? 'Guest',
-      refundAmount: (json['refund_amount'] as num).toDouble(),
+      id: json['id'].toString(),
+      orderId: json['order_id'].toString(),
+      userId: json['user_id'].toString(),
+      refundAmount: amount,
       reason: json['reason'] as String,
-      status: json['status'] as String? ?? 'pending',
-      requestedAt: DateTime.parse(json['requested_at'] as String),
+      status: (json['status'] as String?) ?? 'pending',
+      requestedAt: DateTime.parse(json['requested_at'].toString()),
       processedAt: json['processed_at'] != null
-          ? DateTime.parse(json['processed_at'] as String)
+          ? DateTime.tryParse(json['processed_at'].toString())
           : null,
       adminNotes: json['admin_notes'] as String?,
-      processedBy: json['processed_by'] as String?,
+      processedBy: json['processed_by']?.toString(),
+      imageProofUrl: json['image_proof_url'] as String?,
     );
   }
 
@@ -48,14 +53,14 @@ class RefundModel {
       'id': id,
       'order_id': orderId,
       'user_id': userId,
-      'user_name': userName,
-      'refund_amount': refundAmount,
+      'amount': refundAmount,
       'reason': reason,
       'status': status,
       'requested_at': requestedAt.toIso8601String(),
       'processed_at': processedAt?.toIso8601String(),
       'admin_notes': adminNotes,
       'processed_by': processedBy,
+      'image_proof_url': imageProofUrl,
     };
   }
 
@@ -64,12 +69,12 @@ class RefundModel {
     DateTime? processedAt,
     String? adminNotes,
     String? processedBy,
+    String? imageProofUrl,
   }) {
     return RefundModel(
       id: id,
       orderId: orderId,
       userId: userId,
-      userName: userName,
       refundAmount: refundAmount,
       reason: reason,
       status: status ?? this.status,
@@ -77,6 +82,7 @@ class RefundModel {
       processedAt: processedAt ?? this.processedAt,
       adminNotes: adminNotes ?? this.adminNotes,
       processedBy: processedBy ?? this.processedBy,
+      imageProofUrl: imageProofUrl ?? this.imageProofUrl,
     );
   }
 }

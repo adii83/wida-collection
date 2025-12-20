@@ -10,6 +10,8 @@ import '../models/cart_item_model.dart';
 import '../models/user_profile.dart';
 import '../models/user_address.dart';
 import '../models/order_model.dart';
+import '../models/refund_model.dart';
+import '../config/supabase_config.dart';
 
 class SupabaseService extends GetxService {
   SupabaseClient? _client;
@@ -249,6 +251,71 @@ class SupabaseService extends GetxService {
     }
   }
 
+  Future<String?> uploadRefundProof(
+    File file, {
+    required String userId,
+    required String orderId,
+  }) async {
+    if (!isReady) return null;
+    try {
+      final ext = () {
+        final p = file.path;
+        final dot = p.lastIndexOf('.');
+        if (dot == -1 || dot == p.length - 1) return '';
+        final e = p.substring(dot).toLowerCase();
+        if (e == '.jpg' || e == '.jpeg' || e == '.png' || e == '.webp') {
+          return e;
+        }
+        return '';
+      }();
+
+      final contentType = () {
+        switch (ext) {
+          case '.png':
+            return 'image/png';
+          case '.webp':
+            return 'image/webp';
+          case '.jpg':
+          case '.jpeg':
+          default:
+            return 'image/jpeg';
+        }
+      }();
+
+      const bucket = 'refund-proofs';
+      final objectPath =
+          'refunds/$userId/$orderId/${const Uuid().v4()}${ext.isEmpty ? '.jpg' : ext}';
+
+      final sw = Stopwatch()..start();
+      await _client!.storage
+          .from(bucket)
+          .upload(
+            objectPath,
+            file,
+            fileOptions: FileOptions(
+              cacheControl: '3600',
+              upsert: false,
+              contentType: contentType,
+            ),
+          );
+      sw.stop();
+      debugPrint('Supabase upload: ${sw.elapsedMilliseconds} ms');
+
+      final publicUrl = _client!.storage.from(bucket).getPublicUrl(objectPath);
+      return '$publicUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+    } on StorageException catch (e) {
+      // NOTE: Supabase Storage may return 404 for buckets that don't exist OR when
+      // the client is pointing to a different Supabase project than expected.
+      debugPrint(
+        'Upload refund proof failed (storage). url=${SupabaseConfig.supabaseUrl} bucket=refund-proofs statusCode=${e.statusCode} message=${e.message}',
+      );
+      return null;
+    } catch (e) {
+      debugPrint('Upload refund proof failed: $e');
+      return null;
+    }
+  }
+
   void subscribeNotes(void Function(PostgresChangePayload payload) onChange) {
     if (!isReady) return;
     _notesChannel?.unsubscribe();
@@ -477,5 +544,166 @@ class SupabaseService extends GetxService {
       }
       rethrow;
     }
+  }
+
+  Future<List<OrderModel>> fetchMyOrders({required String userId}) async {
+    if (!isReady) return [];
+    final client = _client!;
+
+    Future<List<OrderModel>> mapRows(dynamic rows) async {
+      if (rows is! List) return [];
+      return rows
+          .map((row) => Map<String, dynamic>.from(row as Map<dynamic, dynamic>))
+          .map(OrderModel.fromJson)
+          .toList();
+    }
+
+    try {
+      final rows = await client
+          .from('orders')
+          .select()
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+      return mapRows(rows);
+    } on PostgrestException catch (e) {
+      final looksLikeMissingColumn =
+          e.code == '42703' ||
+          e.message.toLowerCase().contains('column') ||
+          (e.details?.toString().toLowerCase().contains('column') ?? false);
+
+      if (!looksLikeMissingColumn) rethrow;
+
+      // Fallback for schemas that use `owner` as user FK
+      final rows = await client
+          .from('orders')
+          .select()
+          .eq('owner', userId)
+          .order('created_at', ascending: false);
+      return mapRows(rows);
+    }
+  }
+
+  Future<bool> confirmOrderReceived({
+    required String orderId,
+    required String userId,
+  }) async {
+    if (!isReady) return false;
+    final client = _client!;
+
+    try {
+      final updated = await client
+          .from('orders')
+          .update({
+            'status': 'delivered',
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', orderId)
+          .eq('user_id', userId)
+          .select('id');
+
+      if (updated is List && updated.isEmpty) return false;
+      return true;
+    } on PostgrestException catch (e) {
+      final looksLikeMissingColumn =
+          e.code == '42703' ||
+          e.message.toLowerCase().contains('column') ||
+          (e.details?.toString().toLowerCase().contains('column') ?? false);
+      if (!looksLikeMissingColumn) rethrow;
+
+      // Fallback for schemas that use `owner` as user FK
+      final updated = await client
+          .from('orders')
+          .update({
+            'status': 'delivered',
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', orderId)
+          .eq('owner', userId)
+          .select('id');
+
+      if (updated is List && updated.isEmpty) return false;
+      return true;
+    }
+  }
+
+  // Refunds (refunds table)
+  Future<RefundModel?> fetchRefundByOrderId({
+    required String orderId,
+    required String userId,
+  }) async {
+    if (!isReady) return null;
+    final client = _client!;
+
+    Future<RefundModel?> mapSingle(dynamic row) async {
+      if (row == null) return null;
+      return RefundModel.fromJson(
+        Map<String, dynamic>.from(row as Map<dynamic, dynamic>),
+      );
+    }
+
+    final row = await client
+        .from('refunds')
+        .select()
+        .eq('order_id', orderId)
+        .eq('user_id', userId)
+        .order('requested_at', ascending: false)
+        .maybeSingle();
+    return mapSingle(row);
+  }
+
+  Future<List<RefundModel>> fetchMyRefunds({required String userId}) async {
+    if (!isReady) return [];
+    final client = _client!;
+
+    List<RefundModel> mapRows(dynamic rows) {
+      if (rows is! List) return [];
+      return rows
+          .map((r) => Map<String, dynamic>.from(r as Map<dynamic, dynamic>))
+          .map(RefundModel.fromJson)
+          .toList();
+    }
+
+    final rows = await client
+        .from('refunds')
+        .select()
+        .eq('user_id', userId)
+        .order('requested_at', ascending: false);
+    return mapRows(rows);
+  }
+
+  Future<RefundModel?> createRefundRequest({
+    required String orderId,
+    required String userId,
+    required double amount,
+    required String reason,
+    String? imageProofUrl,
+  }) async {
+    if (!isReady) return null;
+    final client = _client!;
+
+    // Prevent duplicates
+    final existing = await fetchRefundByOrderId(
+      orderId: orderId,
+      userId: userId,
+    );
+    if (existing != null) return existing;
+
+    final inserted = await client
+        .from('refunds')
+        .insert({
+          'order_id': orderId,
+          'user_id': userId,
+          'reason': reason,
+          'amount': amount,
+          'status': 'pending',
+          'requested_at': DateTime.now().toIso8601String(),
+          if (imageProofUrl != null) 'image_proof_url': imageProofUrl,
+        })
+        .select()
+        .single();
+
+    return RefundModel.fromJson(
+      Map<String, dynamic>.from(inserted as Map<dynamic, dynamic>),
+    );
   }
 }

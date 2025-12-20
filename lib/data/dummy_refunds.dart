@@ -6,7 +6,6 @@ final List<RefundModel> dummyRefunds = [
     id: 'REF001',
     orderId: 'ORD001',
     userId: 'user1',
-    userName: 'Budi Santoso',
     refundAmount: 97000,
     reason:
         'Produk tidak sesuai deskripsi. Warna yang diterima berbeda dengan yang ditampilkan di foto.',
@@ -17,7 +16,6 @@ final List<RefundModel> dummyRefunds = [
     id: 'REF002',
     orderId: 'ORD002',
     userId: 'user2',
-    userName: 'Siti Nurhaliza',
     refundAmount: 78000,
     reason:
         'Barang rusak saat diterima. Kemasan sudah penyok dan produk tidak berfungsi dengan baik.',
@@ -31,7 +29,6 @@ final List<RefundModel> dummyRefunds = [
     id: 'REF003',
     orderId: 'ORD003',
     userId: 'user3',
-    userName: 'Ahmad Wijaya',
     refundAmount: 81000,
     reason:
         'Pesanan tidak sesuai. Saya memesan 3 item tapi hanya diterima 2 item saja.',
@@ -42,7 +39,6 @@ final List<RefundModel> dummyRefunds = [
     id: 'REF004',
     orderId: 'ORD007',
     userId: 'user7',
-    userName: 'Lisa Manobal',
     refundAmount: 136000,
     reason:
         'Produk tidak berfungsi dengan baik. Laptop sering restart sendiri dan headphone suaranya kecil.',
@@ -57,7 +53,6 @@ final List<RefundModel> dummyRefunds = [
     id: 'REF005',
     orderId: 'ORD005',
     userId: 'user5',
-    userName: 'Dewi Lestari',
     refundAmount: 53000,
     reason:
         'Salah pesan warna. Saya ingin warna coklat tapi yang datang warna hitam.',
@@ -72,7 +67,6 @@ final List<RefundModel> dummyRefunds = [
     id: 'REF006',
     orderId: 'ORD004',
     userId: 'user4',
-    userName: 'Rina Handoko',
     refundAmount: 16000,
     reason: 'Barang tidak sampai tepat waktu dan sudah tidak diperlukan lagi.',
     status: 'pending',
@@ -82,7 +76,6 @@ final List<RefundModel> dummyRefunds = [
     id: 'REF007',
     orderId: 'ORD006',
     userId: 'user6',
-    userName: 'Hendra Gunawan',
     refundAmount: 24000,
     reason:
         'Kualitas produk tidak sesuai harga. Material terasa murahan dan mudah rusak.',

@@ -42,8 +42,8 @@ class _AdminOrderManagementScreenState
                   children: [
                     _buildFilterChip(controller, 'all', 'Semua'),
                     _buildFilterChip(controller, 'pending', 'Dikemas'),
-                    _buildFilterChip(controller, 'processing', 'Dikirim'),
-                    _buildFilterChip(controller, 'shipped', 'Diterima'),
+                    _buildFilterChip(controller, 'processing', 'Diproses'),
+                    _buildFilterChip(controller, 'shipped', 'Dikirim'),
                   ],
                 ),
               ),
@@ -273,9 +273,9 @@ class _AdminOrderManagementScreenState
       case 'pending':
         return 'Dikemas';
       case 'processing':
-        return 'Dikirim';
+        return 'Diproses';
       case 'shipped':
-        return 'Diterima';
+        return 'Dikirim';
       default:
         return status.toUpperCase();
     }

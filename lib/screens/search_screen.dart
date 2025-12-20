@@ -8,7 +8,9 @@ import 'product_detail_screen.dart';
 import '../services/product_service.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  const SearchScreen({super.key, this.initialCategory});
+
+  final String? initialCategory;
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -23,12 +25,20 @@ class _SearchScreenState extends State<SearchScreen> {
   void initState() {
     super.initState();
     _productService = Get.find<ProductService>();
+    final initial = (widget.initialCategory ?? '').trim();
+    if (initial.isNotEmpty) {
+      _query = initial;
+      _controller.text = initial;
+    }
   }
 
   List<Product> _filteredProducts(List<Product> source) {
     final lower = _query.toLowerCase();
+    if (lower.trim().isEmpty) return source;
     return source.where((product) {
-      final matchQuery = product.name.toLowerCase().contains(lower);
+      final matchQuery =
+          product.name.toLowerCase().contains(lower) ||
+          product.resolvedCategory.toLowerCase().contains(lower);
       return matchQuery;
     }).toList();
   }

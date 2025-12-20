@@ -72,30 +72,40 @@ class _HomeLanding extends StatelessWidget {
   List<Map<String, dynamic>> get categories => [
     {
       'title': 'Dresses',
-      'subtitle': '45 items',
       'gradient': const LinearGradient(
         colors: [Color(0xFFFF8FB1), Color(0xFFFF5E9D)],
       ),
     },
     {
       'title': 'Jackets',
-      'subtitle': '32 items',
       'gradient': const LinearGradient(
         colors: [Color(0xFFB19CFF), Color(0xFF7B5BFF)],
       ),
     },
     {
       'title': 'Sweaters',
-      'subtitle': '28 items',
       'gradient': const LinearGradient(
         colors: [Color(0xFFFFC48F), Color(0xFFFF9264)],
       ),
     },
     {
       'title': 'Jeans',
-      'subtitle': '38 items',
       'gradient': const LinearGradient(
         colors: [Color(0xFFFFD1D1), Color(0xFFFF9190)],
+      ),
+    },
+    {
+      'title': 'Pants',
+      // Reuse existing gradient tokens/colors (no new palette)
+      'gradient': const LinearGradient(
+        colors: [Color(0xFFFFC48F), Color(0xFFFF9264)],
+      ),
+    },
+    {
+      'title': 'T-Shirts',
+      // Reuse existing gradient tokens/colors (no new palette)
+      'gradient': const LinearGradient(
+        colors: [Color(0xFFB19CFF), Color(0xFF7B5BFF)],
       ),
     },
   ];
@@ -204,30 +214,44 @@ class _HomeLanding extends StatelessWidget {
                       subtitle: 'Pilih kategori favorit',
                     ),
                     const SizedBox(height: 16),
-                    GridView.builder(
-                      shrinkWrap: true,
-                      itemCount: categories.length,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                            childAspectRatio: 1.1,
-                          ),
-                      itemBuilder: (context, index) {
-                        final data = categories[index];
-                        return CategoryCard(
-                          title: data['title'] as String,
-                          subtitle: data['subtitle'] as String,
-                          gradient: data['gradient'] as Gradient,
-                          onTap: () => Get.snackbar(
-                            'Segera hadir',
-                            '${data['title']} collection sedang dikuratori',
-                          ),
-                        );
-                      },
-                    ),
+                    Obx(() {
+                      final items = productService.products;
+
+                      final counts = <String, int>{
+                        for (final c in categories) (c['title'] as String): 0,
+                      };
+                      for (final p in items) {
+                        final key = p.resolvedCategory;
+                        final current = counts[key];
+                        if (current != null) counts[key] = current + 1;
+                      }
+
+                      return GridView.builder(
+                        shrinkWrap: true,
+                        itemCount: categories.length,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: 12,
+                              crossAxisSpacing: 12,
+                              childAspectRatio: 1.1,
+                            ),
+                        itemBuilder: (context, index) {
+                          final data = categories[index];
+                          final title = data['title'] as String;
+                          final subtitle = '${counts[title] ?? 0} items';
+                          return CategoryCard(
+                            title: title,
+                            subtitle: subtitle,
+                            gradient: data['gradient'] as Gradient,
+                            onTap: () => Get.to(
+                              () => SearchScreen(initialCategory: title),
+                            ),
+                          );
+                        },
+                      );
+                    }),
                   ],
                 ),
               ),
