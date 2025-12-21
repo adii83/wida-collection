@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../models/product_model.dart';
 import '../services/supabase_service.dart';
+import '../utils/formatters.dart';
 
 class AdminSelectProductScreen extends StatefulWidget {
   const AdminSelectProductScreen({super.key});
@@ -109,7 +110,7 @@ class _AdminSelectProductScreenState extends State<AdminSelectProductScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         subtitle: Text(
-                          'Rp ${product.price.toStringAsFixed(0)}',
+                          AppFormatters.rupiah(product.price),
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         onTap: () => Get.back(result: product),

@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../controllers/order_controller.dart';
 import '../models/refund_model.dart';
 import 'admin_refund_detail_screen.dart';
+import '../utils/formatters.dart';
 
 class AdminRefundManagementScreen extends StatefulWidget {
   const AdminRefundManagementScreen({super.key});
@@ -208,7 +209,7 @@ class _AdminRefundManagementScreenState
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Rp ${refund.refundAmount.toStringAsFixed(0)}',
+                                    AppFormatters.rupiah(refund.refundAmount),
                                     style: const TextStyle(
                                       color: Colors.red,
                                       fontWeight: FontWeight.bold,

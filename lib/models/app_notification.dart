@@ -34,6 +34,7 @@ class AppNotification {
     required this.data,
     required this.origin,
     this.productId,
+    this.isRead = false,
   });
 
   final String id;
@@ -44,6 +45,7 @@ class AppNotification {
   final Map<String, dynamic> data;
   final NotificationOrigin origin;
   final String? productId;
+  final bool isRead;
 
   factory AppNotification.fromRemoteMessage(
     RemoteMessage message,
@@ -76,10 +78,13 @@ class AppNotification {
     final body =
         normalized['body']?.toString() ??
         'Cek detail promo terbaru di Wida Collection.';
+
+    // Correct ID priority: Payload ID > Override (FCM) > Timestamp
     final id =
-        idOverride ??
         normalized['id']?.toString() ??
+        idOverride ??
         DateTime.now().millisecondsSinceEpoch.toString();
+
     return AppNotification(
       id: id,
       title: title,
@@ -89,6 +94,21 @@ class AppNotification {
       receivedAt: DateTime.now(),
       data: normalized,
       origin: origin,
+      isRead: false, // New notifications are always unread by default
+    );
+  }
+
+  AppNotification copyWith({bool? isRead}) {
+    return AppNotification(
+      id: id,
+      title: title,
+      body: body,
+      type: type,
+      receivedAt: receivedAt,
+      data: data,
+      origin: origin,
+      productId: productId,
+      isRead: isRead ?? this.isRead,
     );
   }
 
@@ -115,9 +135,15 @@ class AppNotification {
     'receivedAt': receivedAt.toIso8601String(),
     'origin': origin.name,
     'data': data,
+    'isRead': isRead,
   };
 
   String toStorageString() => jsonEncode(toJson());
+
+  factory AppNotification.toJson(Map<String, dynamic> json) {
+    // Legacy support: call fromJson
+    return AppNotification.fromJson(json);
+  }
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     final type = NotificationType.from(json['type']?.toString());
@@ -135,6 +161,8 @@ class AppNotification {
         ? rawData.map((key, value) => MapEntry(key.toString(), value))
         : <String, dynamic>{};
     final productIdRaw = json['productId']?.toString();
+    final isRead = json['isRead'] == true;
+
     return AppNotification(
       id:
           json['id']?.toString() ??
@@ -148,6 +176,7 @@ class AppNotification {
       receivedAt: receivedAt,
       data: normalizedData,
       origin: origin,
+      isRead: isRead,
     );
   }
 

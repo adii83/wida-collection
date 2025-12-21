@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import '../controllers/notification_controller.dart';
 import '../config/design_tokens.dart';
 
 class CustomNavBar extends StatelessWidget {
@@ -54,12 +56,16 @@ class CustomNavBar extends StatelessWidget {
               isSelected: currentIndex == 2,
               onTap: () => onTap(2),
             ),
-            _NavBarItem(
-              icon: Icons.notifications_rounded,
-              label: 'Notif',
-              isSelected: currentIndex == 3,
-              onTap: () => onTap(3),
-            ),
+            Obx(() {
+              final notifController = Get.find<NotificationController>();
+              return _NavBarItem(
+                icon: Icons.notifications_rounded,
+                label: 'Notif',
+                isSelected: currentIndex == 3,
+                onTap: () => onTap(3),
+                showBadge: notifController.unreadCount > 0,
+              );
+            }),
             _NavBarItem(
               icon: Icons.person_rounded,
               label: 'Profile',
@@ -79,12 +85,14 @@ class _NavBarItem extends StatelessWidget {
     required this.label,
     required this.isSelected,
     required this.onTap,
+    this.showBadge = false,
   });
 
   final IconData icon;
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
+  final bool showBadge;
 
   @override
   Widget build(BuildContext context) {
@@ -105,10 +113,34 @@ class _NavBarItem extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.white : AppColors.softGray,
-              size: 24,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  icon,
+                  color: isSelected ? Colors.white : AppColors.softGray,
+                  size: 24,
+                ),
+                if (showBadge)
+                  Positioned(
+                    top: -2,
+                    right: -2,
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: isSelected ? Colors.white : Colors.red,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primaryPink
+                              : Colors.white,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             if (isSelected) ...[
               const SizedBox(width: 8),

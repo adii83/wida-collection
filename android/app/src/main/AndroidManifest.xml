@@ -8,7 +8,7 @@
     <!-- Optional: background location (only if your app needs continuous background tracking) -->
     <!-- <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" /> -->
     <application
-        android:label="winda_collection"
+        android:label="Wida Collection"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

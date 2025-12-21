@@ -9,7 +9,6 @@ import 'controllers/theme_controller.dart';
 import 'controllers/wishlist_controller.dart';
 import 'controllers/cart_controller.dart';
 import 'controllers/admin_controller.dart';
-import 'screens/auth_gate.dart';
 import 'services/hive_service.dart';
 import 'services/preferences_service.dart';
 import 'services/supabase_service.dart';
@@ -25,6 +24,7 @@ import 'screens/admin_order_management_screen.dart';
 import 'screens/admin_refund_management_screen.dart';
 import 'screens/admin_notification_screen.dart';
 import 'routes/app_routes.dart';
+import 'screens/splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -133,7 +133,7 @@ class WindaCollectionApp extends StatelessWidget {
             page: () => const AdminNotificationScreen(),
           ),
         ],
-        home: const AuthGate(),
+        home: const SplashScreen(),
       ),
     );
   }

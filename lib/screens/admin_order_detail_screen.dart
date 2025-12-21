@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/order_controller.dart';
 import '../models/order_model.dart';
+import '../utils/formatters.dart';
 
 class AdminOrderDetailScreen extends StatefulWidget {
   final OrderModel order;
@@ -217,7 +218,7 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
                         _buildInfoRow('Email', order.userEmail),
                         _buildInfoRow(
                           'Total',
-                          'Rp ${order.totalAmount.toStringAsFixed(0)}',
+                          AppFormatters.rupiah(order.totalAmount),
                         ),
                         _buildInfoRow('Alamat', order.shippingAddress),
                       ],
@@ -306,7 +307,7 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
                                           ),
                                         ),
                                         Text(
-                                          'Rp ${(item.price * item.quantity).toStringAsFixed(0)}',
+                                          AppFormatters.rupiah(item.price * item.quantity),
                                           style: const TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,

@@ -16,6 +16,11 @@ class NotificationCenterScreen extends GetView<NotificationController> {
       appBar: AppBar(
         title: const Text('Pusat Notifikasi'),
         actions: [
+          IconButton(
+            onPressed: controller.markAllAsRead,
+            icon: const Icon(Icons.mark_email_read),
+            tooltip: 'Tandai semua sudah dibaca',
+          ),
           Obx(
             () => IconButton(
               onPressed: controller.notifications.isEmpty
@@ -61,39 +66,75 @@ class _NotificationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final localDate = entry.receivedAt.toLocal();
     final dateLabel =
-        '${localDate.year}-${localDate.month.toString().padLeft(2, '0')}-${localDate.day.toString().padLeft(2, '0')}';
-    final badgeColor = entry.type == NotificationType.promo
-        ? Colors.pinkAccent
-        : entry.type == NotificationType.orderStatus
-        ? Colors.teal
-        : Colors.grey;
-    const dateColor = Color.fromARGB(255, 169, 169, 169);
-    final iconData = entry.type == NotificationType.promo
-        ? Icons.local_offer
-        : entry.type == NotificationType.orderStatus
-        ? Icons.inventory_2
-        : Icons.notifications;
+        '${localDate.day}/${localDate.month}/${localDate.year} ${localDate.hour}:${localDate.minute.toString().padLeft(2, '0')}';
+
+    // Visual distinction for unread notifications
+    final backgroundColor = entry.isRead
+        ? Colors.white
+        : const Color(0xFFFFF0F5); // Light Pink for unread
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
+      color: backgroundColor,
+      elevation: entry.isRead ? 0.5 : 2, // Slight elevation pop for unread
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: entry.isRead
+            ? BorderSide.none
+            : const BorderSide(color: Colors.pinkAccent, width: 0.5),
+      ),
       child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: CircleAvatar(
-          backgroundColor: badgeColor.withOpacity(0.15),
-          child: Icon(iconData, color: badgeColor),
-        ),
-        title: Text(entry.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text.rich(
-          TextSpan(
-            text: '${entry.body}\n',
-            style: Theme.of(context).textTheme.bodyMedium,
-            children: [
-              TextSpan(
-                text: dateLabel,
-                style: TextStyle(color: dateColor),
-              ),
-            ],
+          backgroundColor: Colors.transparent,
+          radius: 24,
+          child: Image.asset(
+            'assets/images/logo.png', // The requested "iclauncher" / logo
+            fit: BoxFit.contain,
           ),
         ),
-        trailing: onTap == null ? null : const Icon(Icons.chevron_right),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                entry.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: entry.isRead ? FontWeight.w500 : FontWeight.bold,
+                ),
+              ),
+            ),
+            if (!entry.isRead) ...[
+              const SizedBox(width: 8),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: Colors.pinkAccent,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              entry.body,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: entry.isRead ? Colors.grey[700] : Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              dateLabel,
+              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+            ),
+          ],
+        ),
         onTap: onTap,
       ),
     );

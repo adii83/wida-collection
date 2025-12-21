@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/order_controller.dart';
 import '../models/refund_model.dart';
+import '../utils/formatters.dart';
 
 class AdminRefundDetailScreen extends StatefulWidget {
   final RefundModel refund;
@@ -162,7 +163,7 @@ class _AdminRefundDetailScreenState extends State<AdminRefundDetailScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      'Rp ${refund.refundAmount.toStringAsFixed(0)}',
+                      AppFormatters.rupiah(refund.refundAmount),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -198,7 +199,7 @@ class _AdminRefundDetailScreenState extends State<AdminRefundDetailScreen> {
                         _buildInfoRow('Order ID', refund.orderId),
                         _buildInfoRow(
                           'Jumlah Refund',
-                          'Rp ${refund.refundAmount.toStringAsFixed(0)}',
+                          AppFormatters.rupiah(refund.refundAmount),
                         ),
                         _buildInfoRow(
                           'Diajukan',

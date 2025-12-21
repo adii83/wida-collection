@@ -1,4 +1,4 @@
-import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -15,6 +15,7 @@ import '../widgets/product_card.dart';
 
 import '../widgets/rounded_icon_button.dart';
 import '../widgets/custom_nav_bar.dart';
+import '../widgets/rotating_search_text.dart';
 import 'cart_screen.dart';
 import 'cloud_notes_screen.dart';
 import 'notification_center_screen.dart';
@@ -41,6 +42,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // Pages for the bottom nav
     final pages = [
       _HomeLanding(onOpenSearch: () => Get.to(() => const SearchScreen())),
       const WishlistScreen(),
@@ -49,16 +54,141 @@ class _HomeScreenState extends State<HomeScreen> {
       const ProfileScreen(),
     ];
 
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final barColor = theme.colorScheme.surface;
-
     return Scaffold(
       extendBody: true,
-      body: IndexedStack(index: _currentIndex, children: pages),
+      // Use Stack only for the Home tab (index 0) to support the sticky bar overlay.
+      // Other tabs behave normally.
+      body: _currentIndex == 0
+          ? Stack(
+              children: [
+                // Page Content
+                pages[0],
+                // Sticky Header (Overlay)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: _StickyTopBar(
+                    onOpenSearch: () => Get.to(() => const SearchScreen()),
+                  ),
+                ),
+              ],
+            )
+          : IndexedStack(index: _currentIndex, children: pages),
       bottomNavigationBar: CustomNavBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
+      ),
+    );
+  }
+}
+
+class _StickyTopBar extends StatelessWidget {
+  const _StickyTopBar({required this.onOpenSearch});
+
+  final VoidCallback onOpenSearch;
+
+  @override
+  Widget build(BuildContext context) {
+    // Glassmorphism effect or solid with high opacity for premium feel
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bgColor = isDark
+        ? const Color(0xB31E1E1E) // Dark transparent
+        : const Color(0xB3FFFFFF); // White transparent
+
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          color: bgColor,
+          padding: EdgeInsets.only(
+            top: MediaQuery.of(context).padding.top + 8,
+            bottom: 12,
+            left: 16,
+            right: 16,
+          ),
+          child: Row(
+            children: [
+              // Logo Rounded
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryPink.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    height: 40,
+                    width: 40,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Expanded Search Bar
+              Expanded(
+                child: GestureDetector(
+                  onTap: onOpenSearch,
+                  child: Container(
+                    height: 40,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white10 : Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppColors.primaryPink.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.search,
+                          color: AppColors.primaryPink,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: RotatingSearchText(
+                            textColor: isDark
+                                ? Colors.white60
+                                : Colors.grey.shade600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              // Cart
+              RoundedIconButton(
+                icon: Icons.shopping_bag_outlined,
+                onPressed: () => Get.to(() => const CartScreen()),
+                // Make it slightly smaller to fit
+                // radius is not directly exposed in RoundedIconButton constructor usually?
+                // Assuming it uses default size, which is fine.
+              ),
+
+              const SizedBox(width: 8),
+
+              // Theme Toggle
+              _ThemeToggle(controller: Get.find<ThemeController>()),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -112,26 +242,30 @@ class _HomeLanding extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeController = Get.find<ThemeController>();
     final productService = Get.find<ProductService>();
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final background = theme.scaffoldBackgroundColor;
     final isDark = theme.brightness == Brightness.dark;
 
+    // Calculate top padding to clear the sticky bar
+    // Sticky bar height approx: StatusBar + 8 + 40 + 12 = StatusBar + 60
+    final topPadding = MediaQuery.of(context).padding.top + 60;
+
     return Container(
       color: background,
       child: SafeArea(
         bottom: false,
+        top: false, // Handle top padding manually in the content
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(
+                padding: EdgeInsets.fromLTRB(
                   AppSpacing.page,
-                  AppSpacing.heroTop,
+                  topPadding + 24, // Add extra spacing below the bar
                   AppSpacing.page,
                   32,
                 ),
@@ -144,39 +278,6 @@ class _HomeLanding extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: scheme.surface,
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: const Icon(
-                            Icons.favorite,
-                            color: AppColors.primaryPink,
-                          ),
-                        ),
-                        AppSpacing.hItem,
-                        const Text(
-                          'Wida Collection',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 18,
-                          ),
-                        ),
-                        const Spacer(),
-                        RoundedIconButton(
-                          icon: Icons.shopping_bag_outlined,
-                          onPressed: () => Get.to(() => const CartScreen()),
-                        ),
-                        AppSpacing.hItem,
-                        _ThemeToggle(controller: themeController),
-                      ],
-                    ),
-                    AppSpacing.vSection,
-                    _SearchField(onTap: onOpenSearch),
-                    AppSpacing.vSection,
                     const Chip(label: Text('Vintage Fashion')),
                     const SizedBox(height: 16),
                     Text(
@@ -384,102 +485,6 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(height: 4),
         Text(subtitle, style: const TextStyle(color: AppColors.softGray)),
       ],
-    );
-  }
-}
-
-class _SearchField extends StatefulWidget {
-  const _SearchField({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  State<_SearchField> createState() => _SearchFieldState();
-}
-
-class _SearchFieldState extends State<_SearchField> {
-  static const _prompts = [
-    'Cari Pakaian Wanita',
-    'Cari Pakaian Pria',
-    'Dress Vintage Favorit',
-    'Jaket Denim Terbaru',
-    'Sweater Hangat',
-    'Celana Jeans Classic',
-    'Aksesoris Retro',
-    'Sepatu Santai',
-  ];
-
-  late int _currentPrompt;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentPrompt = 0;
-    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
-      setState(() {
-        _currentPrompt = (_currentPrompt + 1) % _prompts.length;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final bgColor = theme.colorScheme.surface;
-    final borderColor = AppColors.primaryPink.withOpacity(0.2);
-
-    return GestureDetector(
-      onTap: widget.onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: borderColor),
-          boxShadow: theme.brightness == Brightness.dark
-              ? null
-              : [
-                  BoxShadow(
-                    color: AppColors.primaryPink.withOpacity(0.08),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.search, color: AppColors.primaryPink),
-            const SizedBox(width: 12),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 350),
-                transitionBuilder: (child, animation) =>
-                    FadeTransition(opacity: animation, child: child),
-                child: Text(
-                  _prompts[_currentPrompt],
-                  key: ValueKey(_currentPrompt),
-                  style: const TextStyle(
-                    color: AppColors.primaryPink,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: AppColors.softGray,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

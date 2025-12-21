@@ -152,8 +152,8 @@ class NotificationService extends GetxService {
         'body': message.notification!.body,
     };
     payload['id'] =
-        message.messageId ??
         payload['id'] ??
+        message.messageId ??
         DateTime.now().millisecondsSinceEpoch.toString();
     return payload;
   }

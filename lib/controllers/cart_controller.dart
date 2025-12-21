@@ -18,16 +18,50 @@ class CartController extends GetxController {
 
   final items = <CartItemModel>[].obs;
   final isSyncing = false.obs;
+  final selectedIds = <String>{}.obs;
 
   bool get canSync => _supabaseService.isReady && _auth.isLoggedIn;
 
   @override
   void onInit() {
     super.onInit();
+    // Start with empty, loaded from local storage later
     loadLocal();
     ever(_auth.currentUser, (_) => _handleAuthChange());
     _handleAuthChange();
   }
+
+  /// Ensures selectedIds only contains IDs that are actually in the items list.
+  void _validateSelection() {
+    if (items.isEmpty) {
+      selectedIds.clear();
+      return;
+    }
+    final currentIds = items.map((i) => i.id).toSet();
+    selectedIds.removeWhere((id) => !currentIds.contains(id));
+  }
+
+  void toggleItem(String id) {
+    if (selectedIds.contains(id)) {
+      selectedIds.remove(id);
+    } else {
+      selectedIds.add(id);
+    }
+  }
+
+  void toggleAll() {
+    if (selectedIds.length == items.length) {
+      selectedIds.clear();
+    } else {
+      selectedIds.addAll(items.map((i) => i.id));
+    }
+  }
+
+  bool isSelected(String id) => selectedIds.contains(id);
+
+  double get selectedSubtotal => items
+      .where((i) => selectedIds.contains(i.id))
+      .fold(0.0, (s, i) => s + i.price * i.quantity);
 
   void _handleAuthChange() {
     loadLocal();
@@ -40,10 +74,15 @@ class CartController extends GetxController {
     }
   }
 
+  void _sortItems() {
+    items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
   Future<void> loadLocal() async {
     final owner = _auth.currentUser.value?.id ?? HiveOwnerKeys.local;
     final data = _hiveService.readCart(owner: owner);
     items.assignAll(data);
+    _sortItems();
   }
 
   Future<void> addItem(Product product, {int quantity = 1}) async {
@@ -69,6 +108,8 @@ class CartController extends GetxController {
       existing.updatedAt = DateTime.now();
       existing.synced = false;
       await _hiveService.saveCartItem(existing);
+      // No need to refresh entire list if we just modifed properties, but sorting might depend on it?
+      // If we sort by createdAt, updating quantity won't change order.
       items.refresh();
     } else {
       final now = DateTime.now();
@@ -128,6 +169,7 @@ class CartController extends GetxController {
         await _hiveService.saveCartItem(local);
       }
       items.assignAll(_hiveService.readCart(owner: owner));
+      _sortItems();
     } finally {
       isSyncing.value = false;
     }
@@ -173,6 +215,7 @@ class CartController extends GetxController {
     }
     // reload
     items.assignAll(_hiveService.readCart(owner: owner));
+    _sortItems();
   }
 
   Future<void> clearCart() async {

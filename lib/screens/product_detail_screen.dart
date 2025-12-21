@@ -6,14 +6,16 @@ import 'package:get/get.dart';
 import '../config/design_tokens.dart';
 import '../config/layout_values.dart';
 import '../controllers/wishlist_controller.dart';
-import '../controllers/auth_controller.dart';
+// import '../controllers/auth_controller.dart';
 import '../controllers/cart_controller.dart';
 import '../models/cart_item.dart';
 import '../models/product_model.dart';
 import '../services/product_service.dart';
+import '../utils/formatters.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/product_card.dart';
 import '../widgets/rounded_icon_button.dart';
+import '../widgets/success_dialog.dart';
 import 'checkout_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -196,7 +198,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           Row(
                             children: [
                               Text(
-                                'Rp ${widget.product.price.toStringAsFixed(0)}',
+                                AppFormatters.rupiah(widget.product.price),
                                 style: const TextStyle(
                                   fontSize: 22,
                                   color: AppColors.primaryPink,
@@ -281,12 +283,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               ),
                               borderRadius: BorderRadius.circular(24),
                             ),
-                            child: const Column(
+                            child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 _GuaranteeRow(
                                   icon: Icons.local_shipping,
-                                  text: 'Free shipping min. Rp 200k',
+                                  text:
+                                      'Free shipping min. ${AppFormatters.rupiah(200000)}',
                                 ),
                                 SizedBox(height: 8),
                                 _GuaranteeRow(
@@ -399,18 +402,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   void _handleAddToCart() {
     final cart = Get.find<CartController>();
-    final auth = Get.find<AuthController>();
     cart.addItem(widget.product, quantity: quantity);
-    final userId = auth.currentUser.value?.id;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          userId != null
-              ? 'Ditambahkan ke keranjang (tersinkronisasi bila online)'
-              : 'Ditambahkan ke keranjang (disimpan lokal)',
-        ),
-      ),
+    SuccessDialog.show(
+      title: 'Berhasil!',
+      subtitle: 'Produk berhasil ditambahkan ke keranjang.',
+      showButton: false, // hide button
     );
+    // Auto close after 1 second
+    Future.delayed(const Duration(seconds: 1), () {
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
+    });
   }
 }
 

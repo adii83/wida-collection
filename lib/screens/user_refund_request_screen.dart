@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../models/order_model.dart';
 import '../services/supabase_service.dart';
+import '../utils/formatters.dart';
 
 class UserRefundRequestScreen extends StatefulWidget {
   const UserRefundRequestScreen({super.key, required this.order});
@@ -163,7 +164,7 @@ class _UserRefundRequestScreenState extends State<UserRefundRequestScreen> {
                     'Order #${order.id.length > 8 ? order.id.substring(0, 8).toUpperCase() : order.id}',
                   ),
                   subtitle: Text(
-                    'Total: Rp ${order.totalAmount.toStringAsFixed(0)}',
+                    'Total: ${AppFormatters.rupiah(order.totalAmount)}',
                   ),
                 ),
               ),

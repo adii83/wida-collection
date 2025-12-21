@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../controllers/order_controller.dart';
 import '../services/admin_service.dart';
 import 'admin_order_detail_screen.dart';
+import '../utils/formatters.dart';
 
 class AdminOrderManagementScreen extends StatefulWidget {
   const AdminOrderManagementScreen({super.key});
@@ -185,7 +186,7 @@ class _AdminOrderManagementScreenState
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Rp ${order.totalAmount.toStringAsFixed(0)}',
+                                    AppFormatters.rupiah(order.totalAmount),
                                     style: const TextStyle(
                                       color: Colors.green,
                                       fontWeight: FontWeight.bold,

@@ -7,6 +7,7 @@ import 'admin_refund_management_screen.dart';
 import 'admin_notification_screen.dart';
 import 'auth_gate.dart';
 import '../controllers/auth_controller.dart';
+import '../utils/formatters.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -185,8 +186,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         _buildStatCard(
                           icon: Icons.attach_money,
                           title: 'Total Revenue',
-                          value:
-                              'Rp ${(_statistics?['total_revenue'] ?? 0).toStringAsFixed(0)}',
+                          value: AppFormatters.rupiah(
+                            _statistics?['total_revenue'] ?? 0,
+                          ),
                           color: Colors.green,
                         ),
                         _buildStatCard(

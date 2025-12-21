@@ -9,20 +9,30 @@ class SuccessDialog extends StatelessWidget {
     required this.subtitle,
     this.onPressed,
     this.buttonText = 'OK',
+    this.showButton = true,
   });
 
   final String title;
   final String subtitle;
   final VoidCallback? onPressed;
   final String buttonText;
+  final bool showButton;
 
   static Future<void> show({
     required String title,
     required String subtitle,
     VoidCallback? onPressed,
+    String buttonText = 'OK',
+    bool showButton = true,
   }) async {
     await Get.dialog(
-      SuccessDialog(title: title, subtitle: subtitle, onPressed: onPressed),
+      SuccessDialog(
+        title: title,
+        subtitle: subtitle,
+        onPressed: onPressed,
+        buttonText: buttonText,
+        showButton: showButton,
+      ),
       barrierDismissible: false,
       transitionDuration: const Duration(milliseconds: 300),
     );
@@ -73,28 +83,29 @@ class SuccessDialog extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: onPressed ?? () => Get.back(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryPink,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                  if (showButton)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: onPressed ?? () => Get.back(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryPink,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        buttonText,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                        child: Text(
+                          buttonText,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),

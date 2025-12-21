@@ -4,6 +4,7 @@ import '../models/product_model.dart';
 import '../services/product_service.dart';
 import 'admin_product_detail_screen.dart';
 import 'admin_add_product_screen.dart';
+import '../utils/formatters.dart';
 
 class AdminProductManagementScreen extends StatefulWidget {
   const AdminProductManagementScreen({super.key});
@@ -130,7 +131,7 @@ class _AdminProductManagementScreenState
                                       ),
                                       const SizedBox(height: 3),
                                       Text(
-                                        'Rp ${product.price.toStringAsFixed(0)}',
+                                        AppFormatters.rupiah(product.price),
                                         style: const TextStyle(
                                           color: Colors.green,
                                           fontWeight: FontWeight.w600,

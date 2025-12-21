@@ -4,6 +4,7 @@
 # ==========================================================
 
 # --- Miscellaneous ---
+.env
 *.class
 *.log
 *.pyc
@@ -96,6 +97,7 @@ coverage/
 reports/
 test-output/
 assets/config/service-account.json
+.env
 
 # ==========================================================
 # ✅ KEEP THESE FILES FOR GITHUB

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/wishlist_controller.dart';
+import '../utils/formatters.dart';
 import '../controllers/auth_controller.dart';
 import '../models/product_model.dart';
 import 'auth_screen.dart';
+import 'product_detail_screen.dart';
 
 class WishlistScreen extends GetView<WishlistController> {
   const WishlistScreen({super.key});
@@ -59,21 +61,35 @@ class WishlistScreen extends GetView<WishlistController> {
           padding: const EdgeInsets.all(16),
           itemBuilder: (context, index) {
             final item = controller.wishlist[index];
-            return Card(
-              child: ListTile(
-                leading: item.image.startsWith('assets/')
-                    ? Image.asset(item.image, width: 56, fit: BoxFit.cover)
-                    : Image.network(item.image, width: 56, fit: BoxFit.cover),
-                title: Text(item.name),
-                subtitle: Text('Rp ${item.price.toStringAsFixed(0)}'),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () => controller.toggleWishlist(
-                    Product(
-                      id: item.productId,
-                      name: item.name,
-                      image: item.image,
-                      price: item.price,
+            return GestureDetector(
+              onTap: () {
+                // Construct a temporary Product object for detail screen
+                final product = Product(
+                  id: item.productId,
+                  name: item.name,
+                  image: item.image,
+                  price: item.price,
+                  description: '', // Will load or default in detail screen
+                  category: '', // Unknown
+                );
+                Get.to(() => ProductDetailScreen(product: product));
+              },
+              child: Card(
+                child: ListTile(
+                  leading: item.image.startsWith('assets/')
+                      ? Image.asset(item.image, width: 56, fit: BoxFit.cover)
+                      : Image.network(item.image, width: 56, fit: BoxFit.cover),
+                  title: Text(item.name),
+                  subtitle: Text(AppFormatters.rupiah(item.price)),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => controller.toggleWishlist(
+                      Product(
+                        id: item.productId,
+                        name: item.name,
+                        image: item.image,
+                        price: item.price,
+                      ),
                     ),
                   ),
                 ),

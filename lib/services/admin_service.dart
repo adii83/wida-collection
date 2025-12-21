@@ -420,13 +420,19 @@ class AdminService extends GetxService {
             .toList();
       }
 
+      // Generate a consistent ID for this notification batch/event
+      final notificationId = DateTime.now().millisecondsSinceEpoch.toString();
+
       // 3. Send via FCM V1
       if (tokens.isNotEmpty) {
+        // Merge the ID into the data payload so the receiver uses this exact ID
+        final finalData = {...?data, 'id': notificationId};
+
         await _notificationService.sendFCMV1Message(
           targetTokens: tokens,
           title: title,
           body: body,
-          data: data,
+          data: finalData,
         );
       }
 

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../config/design_tokens.dart';
 import '../models/product_model.dart';
+import '../utils/formatters.dart';
 
 class ProductCard extends StatelessWidget {
   const ProductCard({
@@ -147,7 +148,7 @@ class ProductCard extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          'Rp ${product.price.toStringAsFixed(0)}',
+                          AppFormatters.rupiah(product.price),
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: AppColors.primaryPink,

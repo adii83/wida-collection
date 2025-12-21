@@ -7,7 +7,7 @@ import 'auth_controller.dart';
 
 import '../models/app_notification.dart';
 import '../models/product_model.dart';
-import '../routes/app_routes.dart';
+import '../screens/auth_gate.dart';
 import '../screens/product_detail_screen.dart';
 import '../services/notification_service.dart';
 import '../services/product_service.dart';
@@ -112,11 +112,42 @@ class NotificationController extends GetxController {
     _navigate(entry);
   }
 
+  int get unreadCount => notifications.where((n) => !n.isRead).length;
+
+  void markAsRead(String notificationId) {
+    final index = notifications.indexWhere((n) => n.id == notificationId);
+    if (index != -1) {
+      final entry = notifications[index];
+      if (!entry.isRead) {
+        final updated = entry.copyWith(isRead: true);
+        notifications[index] = updated;
+        notifications.refresh();
+        _persist(updated);
+      }
+    }
+  }
+
+  void markAllAsRead() {
+    for (var i = 0; i < notifications.length; i++) {
+      if (!notifications[i].isRead) {
+        notifications[i] = notifications[i].copyWith(isRead: true);
+      }
+    }
+    notifications.refresh();
+    // Re-persist all (optimization: could be smarter, but simple for now)
+    for (var entry in notifications) {
+      _persist(entry);
+    }
+  }
+
   void _insert(AppNotification entry) {
     final existingIndex = notifications.indexWhere(
       (item) => item.id == entry.id,
     );
     if (existingIndex >= 0) {
+      // If updating, preserve isRead status unless explicitly new
+      // But typically an update means "new info", so maybe mark unread?
+      // For now, let's assume valid updates are "new" -> unread.
       notifications[existingIndex] = entry;
       notifications.refresh();
     } else {
@@ -133,8 +164,20 @@ class NotificationController extends GetxController {
 
   void openEntry(AppNotification entry) => _navigate(entry);
 
+  AppNotification? _deferredNotification;
+
   void _navigate(AppNotification entry) {
-    if (entry.type == NotificationType.promo && entry.productId != null) {
+    if (Get.context == null) {
+      // App not ready (e.g. terminated state launch), defer navigation
+      _deferredNotification = entry;
+      return;
+    }
+
+    // Mark as read immediately when actioned
+    markAsRead(entry.id);
+
+    // Navigate to product detail if productId is present, regardless of type
+    if (entry.productId != null) {
       final product = _findProduct(entry.productId!);
       if (product != null) {
         Get.to(() => ProductDetailScreen(product: product));
@@ -149,7 +192,20 @@ class NotificationController extends GetxController {
         snackPosition: SnackPosition.BOTTOM,
       );
     }
-    Get.toNamed(AppRoutes.notificationCenter);
+    // Default fallback: Go to Home (AuthGate handles redirection to Home or Admin Dashboard)
+    // User requested "langsung ke home jangan halaman notif"
+    Get.offAll(() => const AuthGate());
+  }
+
+  void consumeDeferredNotification() {
+    if (_deferredNotification != null) {
+      final entry = _deferredNotification!;
+      _deferredNotification = null;
+      // Small delay to ensure route stability if called from init
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _navigate(entry);
+      });
+    }
   }
 
   Future<void> triggerCustomNotification() async {

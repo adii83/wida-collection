@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../config/design_tokens.dart';
+
 import '../config/layout_values.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/user_orders_controller.dart';
@@ -17,6 +18,8 @@ import 'wishlist_screen.dart';
 import 'user_orders_screen.dart';
 import 'edit_profile_screen.dart';
 import 'auth_gate.dart';
+import '../widgets/order_detail_sheet.dart';
+import '../widgets/order_card.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -133,6 +136,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
+      bottom: false,
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -391,22 +395,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     final recent = orders.take(2).toList();
                     return Column(
                       children: [
-                        for (int i = 0; i < recent.length; i++) ...[
-                          GestureDetector(
-                            onTap: () => Get.to(() => const UserOrdersScreen()),
-                            child: _OrderTile(
-                              statusLabel: _statusLabel(recent[i].status),
-                              statusColor: _statusColor(recent[i].status),
-                              orderId: '#${_shortOrderId(recent[i].id)}',
-                              date: _formatDate(recent[i].createdAt),
-                              total:
-                                  'Rp ${recent[i].totalAmount.toStringAsFixed(0)}',
-                              items: '${_totalItems(recent[i])} items',
-                            ),
+                        for (final order in recent)
+                          OrderCard(
+                            order: order,
+                            heroTagPrefix: 'profile',
+                            onTap: () {
+                              showModalBottomSheet<void>(
+                                context: context,
+                                isScrollControlled: true,
+                                builder: (context) {
+                                  return SafeArea(
+                                    child: DraggableScrollableSheet(
+                                      expand: false,
+                                      initialChildSize: 0.75,
+                                      minChildSize: 0.4,
+                                      maxChildSize: 0.95,
+                                      builder: (context, scrollController) {
+                                        return OrderDetailSheet(order: order);
+                                      },
+                                    ),
+                                  );
+                                },
+                              );
+                            },
                           ),
-                          if (i != recent.length - 1)
-                            const SizedBox(height: 12),
-                        ],
                       ],
                     );
                   }),
@@ -431,7 +443,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
               ),
             ),
-            AppSpacing.vSection,
+            const SizedBox(height: 120), // Add extra padding for floating nav
           ],
         ),
       ),
@@ -439,64 +451,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   String _initial(String text) => text.isEmpty ? 'W' : text[0].toUpperCase();
-
-  String _shortOrderId(String id) {
-    if (id.length <= 8) return id.toUpperCase();
-    return id.substring(0, 8).toUpperCase();
-  }
-
-  String _formatDate(DateTime value) {
-    final local = value.toLocal();
-    return '${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')}';
-  }
-
-  int _totalItems(dynamic order) {
-    try {
-      // order is OrderModel, but keep it tolerant to avoid extra imports here.
-      final items = order.items as List;
-      int sum = 0;
-      for (final it in items) {
-        sum += (it.quantity as int);
-      }
-      return sum;
-    } catch (_) {
-      return 0;
-    }
-  }
-
-  String _statusLabel(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return 'Menunggu';
-      case 'processing':
-        return 'Diproses';
-      case 'shipped':
-        return 'Dikirim';
-      case 'delivered':
-        return 'Diterima';
-      case 'cancelled':
-        return 'Dibatalkan';
-      default:
-        return status;
-    }
-  }
-
-  Color _statusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return Colors.orange;
-      case 'processing':
-        return Colors.blue;
-      case 'shipped':
-        return AppColors.primaryPink;
-      case 'delivered':
-        return AppColors.success;
-      case 'cancelled':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
 }
 
 class _ProfileStat extends StatelessWidget {
@@ -586,86 +540,6 @@ class _MenuTile extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _OrderTile extends StatelessWidget {
-  const _OrderTile({
-    required this.statusLabel,
-    required this.statusColor,
-    required this.orderId,
-    required this.date,
-    required this.total,
-    required this.items,
-  });
-
-  final String statusLabel;
-  final Color statusColor;
-  final String orderId;
-  final String date;
-  final String total;
-  final String items;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: isDark ? null : AppShadows.card,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                orderId,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  statusLabel,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: statusColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '$date • $items',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppColors.softGray,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            total,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
       ),
     );
   }
